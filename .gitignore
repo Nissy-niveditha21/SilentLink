@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+instance/
+
+# Virtual environment
+venv/
+
+# ML / data / generated content
+data/
+temp_audio/
+output_hi.mp3
+
+# Large model files (important)
+*.h5
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
