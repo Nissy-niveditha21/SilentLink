@@ -5,6 +5,7 @@ instance/
 
 # Virtual environment
 venv/
+veev/
 
 # ML / data / generated content
 data/

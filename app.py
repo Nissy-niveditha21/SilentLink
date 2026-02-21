@@ -1,4 +1,4 @@
-Mzfrom flask import Flask, render_template, request, redirect, url_for, session, Response
+from flask import Flask, render_template, request, redirect, url_for, session, Response
 import cv2
 import numpy as np
 from flask_sqlalchemy import SQLAlchemy
@@ -101,4 +101,3 @@ def video_feed():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)

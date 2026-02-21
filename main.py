@@ -253,7 +253,7 @@ while True:
         elif gesture_label == "Thumb Down":
             close_notepad()
 
-        # Fist → Clear current line
+        
         elif gesture_label == "Fist" and notepad_opened:
             pyautogui.press('home')
             pyautogui.keyDown('shift')
@@ -305,6 +305,7 @@ tts = TextToSpeech()
 lang_choice = input("Press 1 for English voice, 2 for Hindi voice\nYour choice: ").strip()
 lang_code = "hi" if lang_choice == "2" else "en"
 
+tts.announce_language(lang_code)
 cap = cv2.VideoCapture(0)
 
 prev_label = None

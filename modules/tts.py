@@ -14,95 +14,32 @@ class TextToSpeech:
 
         threading.Thread(target=_speak).start()"""
 # modules/tts.py
-
-import os
-import uuid
 from gtts import gTTS
-from pydub import AudioSegment
-from pydub.playback import play
-
-gesture_translations = {
-    "Thumb Up": "अंगूठा ऊपर",
-    "Fist": "मुट्ठी",
-    "Open Palm": "खुली हथेली",
-    "2 Fingers": "दो उंगलियां",
-    "OK Sign": "ठीक है संकेत",
-    # Add more as needed
-}
-
-"""class TextToSpeech:
-    def __init__(self):
-        self.temp_dir = os.path.join(os.getcwd(), "temp_audio")
-        os.makedirs(self.temp_dir, exist_ok=True)
-
-    def speak(self, text, lang_code='en'):
-        try:
-            if lang_code == 'hi' and text in gesture_translations:
-                text = gesture_translations[text]
-
-            print(f"[DEBUG] Speaking: '{text}' in '{lang_code}'")
-
-            filename = f"{uuid.uuid4().hex}.mp3"
-            filepath = os.path.join(self.temp_dir, filename)
-
-            tts = gTTS(text=text, lang=lang_code)
-            tts.save(filepath)
-
-            sound = AudioSegment.from_file(filepath, format="mp3")
-            play(sound)
-
-            os.remove(filepath)
-
-        except Exception as e:
-            print(f"[TTS ERROR] {e}")
-
-"""
-# modules/tts.py
-"""
-from gtts import gTTS
-import os
-import uuid
-from playsound import playsound
-
-class TextToSpeech:
-    def __init__(self):
-        self.temp_dir = os.path.join(os.getcwd(), "temp_audio")
-        os.makedirs(self.temp_dir, exist_ok=True)
-
-    def speak(self, text, lang="en"):
-        try:
-            filename = f"{uuid.uuid4().hex}.mp3"
-            filepath = os.path.join(self.temp_dir, filename)
-
-            tts = gTTS(text=text, lang=lang)
-            tts.save(filepath)
-
-            playsound(filepath)
-            os.remove(filepath)
-
-        except Exception as e:
-            print(f"[TTS ERROR] {e}")
-"""
-from gtts import gTTS
-from playsound import playsound
 import tempfile
 import os
+import time
+import subprocess
+import platform
 
 class TextToSpeech:
-    def __init__(self):
-        pass
-
     def speak(self, text, lang="en"):
         if not text.strip():
             return
 
         try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
                 temp_path = fp.name
 
             tts = gTTS(text=text, lang=lang)
             tts.save(temp_path)
-            playsound(temp_path)
+
+            # Cross-platform audio play
+            if platform.system() == "Windows":
+                os.startfile(temp_path)
+            else:
+                subprocess.call(["mpg123", temp_path])
+
+            time.sleep(2)
 
         except Exception as e:
             print(f"[TTS ERROR] {e}")
@@ -113,3 +50,10 @@ class TextToSpeech:
                     os.remove(temp_path)
                 except:
                     pass
+
+    # 🔹 New function for language confirmation
+    def announce_language(self, lang_code):
+        if lang_code == "hi":
+            self.speak("हिंदी आवाज़ चुनी गई है", "hi")
+        else:
+            self.speak("English voice selected", "en")

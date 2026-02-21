@@ -6,14 +6,13 @@ from tensorflow.keras.models import load_model
 # Load model
 model = load_model("asl_model.h5")
 
-# Labels must match the training order
-DATASET_DIR = 'data/asl_alphabet_train/asl_alphabet_train'
+# Labels must match training order
+DATASET_DIR = 'data/asl_alphabet_train'
 labels = sorted(os.listdir(DATASET_DIR))
-
 label_dict = {idx: label for idx, label in enumerate(labels)}
 
 # Path to test image
-img_path = 'data/asl_alphabet_test/asl_alphabet_test/G_test.jpg'  # update this if needed
+img_path = 'data/asl_alphabet_test/G_test.jpg'
 
 # Load and preprocess image
 img = cv2.imread(img_path)
@@ -22,7 +21,7 @@ if img is None:
 
 img = cv2.resize(img, (64, 64))
 img = img / 255.0
-img = np.expand_dims(img, axis=0)  # (1, 64, 64, 3)
+img = np.expand_dims(img, axis=0)
 
 # Predict
 pred = model.predict(img)

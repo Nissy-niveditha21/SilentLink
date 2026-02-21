@@ -9,7 +9,7 @@ from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
 from tensorflow.keras.optimizers import Adam
 
 # Path to your dataset
-DATASET_DIR = 'data/asl_alphabet_train/asl_alphabet_train'
+DATASET_DIR = 'data/asl_alphabet_train'
 
 # Load the dataset
 #TEST_DIR = 'data/asl_alphabet_test'

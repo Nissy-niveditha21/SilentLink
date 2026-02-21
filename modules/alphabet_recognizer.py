@@ -9,7 +9,7 @@ class AlphabetRecognizer:
         self.model = load_model("asl_model.h5")
 
         # Load label dictionary from folder
-        dataset_path = "data/asl_alphabet_train/asl_alphabet_train"
+        dataset_path = "data/asl_alphabet_train"
         self.labels = sorted(os.listdir(dataset_path))
         self.label_dict = {idx: label for idx, label in enumerate(self.labels)}
 
