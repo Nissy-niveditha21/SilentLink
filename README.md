@@ -6,7 +6,6 @@ Silentlink blends computer vision, real-time hand tracking, and a polished web d
 
 ![Silentlink](https://img.shields.io/badge/status-active-brightgreen)
 ![Silentlink](https://img.shields.io/badge/stack-FastAPI%20%2B%20React%20%2B%20Vite-blue)
-![Silentlink](https://img.shields.io/badge/vision-hand-tracking-purple)
 
 ---
 
