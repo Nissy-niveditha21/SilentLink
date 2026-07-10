@@ -4,11 +4,23 @@ import { CameraStage } from './components/Dashboard/CameraStage';
 import { OutputPanel } from './components/Dashboard/OutputPanel';
 import { MessagingModule } from './components/Modules/MessagingModule';
 import { GestureControlPanel } from './components/Modules/GestureControlPanel';
+import { LoginScreen } from './components/Auth/LoginScreen';
+
+type Command = 'append' | 'backspace' | 'clear_message' | 'send_message';
+
+type EngineState = {
+  status: string;
+  pose: string;
+  progress: number;
+  confidence: number;
+};
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => sessionStorage.getItem('silentlink-auth') === 'true');
+  const [operatorName, setOperatorName] = useState(() => sessionStorage.getItem('silentlink-operator') || 'Operator');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [transcription, setTranscription] = useState("System ready. Sign to begin...");
-  const [engineState, setEngineState] = useState({ status: 'idle', pose: 'Tracking Active', progress: 0, confidence: 0 });
+  const [transcription, setTranscription] = useState(() => isAuthenticated ? 'System ready. Sign to begin...' : 'System locked. Sign in to continue.');
+  const [engineState, setEngineState] = useState<EngineState>({ status: 'idle', pose: 'Tracking Active', progress: 0, confidence: 0 });
   const [messageDraft, setMessageDraft] = useState("");
   const [chatHistory, setChatHistory] = useState<{ text: string, time: string }[]>([]);
   const [targetLanguage, setTargetLanguage] = useState("en");
@@ -23,28 +35,79 @@ function App() {
     window.speechSynthesis.speak(utterance);
   };
 
-  const handleCommand = (cmd: 'append' | 'clear_message' | 'send_message', payload?: string) => {
-    if (cmd === "append" && payload) {
-      setMessageDraft(prev => prev + payload);
-    } else if (cmd === "clear_message") {
+  const sendCurrentDraft = () => {
+    const currentDraft = draftRef.current.trim();
+
+    if (currentDraft !== "") {
+      setChatHistory(prev => [...prev, { text: currentDraft, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
       setMessageDraft("");
-    } else if (cmd === "send_message") {
-      const currentDraft = draftRef.current.trim();
-      if (currentDraft !== "") {
-        setChatHistory(prev => [...prev, { text: currentDraft, time: new Date().toLocaleTimeString() }]);
-        setMessageDraft("");
-        speak(currentDraft);
-      }
+      speak(currentDraft);
     }
   };
 
+  const clearDraft = () => {
+    setMessageDraft("");
+  };
+
+  const replayDraft = () => {
+    const spokenText = draftRef.current.trim() || chatHistory.at(-1)?.text || transcription;
+    if (spokenText) {
+      speak(spokenText);
+    }
+  };
+
+  const handleCommand = (cmd: Command, payload?: string) => {
+    if (!isAuthenticated) return;
+
+    if (cmd === "append" && payload) {
+      setMessageDraft(prev => prev + payload);
+    } else if (cmd === "backspace") {
+      setMessageDraft(prev => prev.slice(0, -1));
+    } else if (cmd === "clear_message") {
+      clearDraft();
+    } else if (cmd === "send_message") {
+      sendCurrentDraft();
+    }
+  };
+
+  const handleLogin = (name: string) => {
+    sessionStorage.setItem('silentlink-auth', 'true');
+    sessionStorage.setItem('silentlink-operator', name);
+    setOperatorName(name);
+    setIsAuthenticated(true);
+    setIsProcessing(false);
+    setEngineState({ status: 'idle', pose: 'Tracking Active', progress: 0, confidence: 0 });
+    setTranscription('System ready. Sign to begin...');
+  };
+
+  const handleLogout = () => {
+    window.speechSynthesis.cancel();
+    sessionStorage.removeItem('silentlink-auth');
+    sessionStorage.removeItem('silentlink-operator');
+    setIsAuthenticated(false);
+    setIsProcessing(false);
+    setEngineState({ status: 'idle', pose: 'Tracking Active', progress: 0, confidence: 0 });
+    setTranscription('System locked. Sign in to continue.');
+    setMessageDraft("");
+    setChatHistory([]);
+  };
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
   return (
-    <Layout language={targetLanguage} setLanguage={setTargetLanguage}>
-      <main className="flex-1 p-6 flex flex-col lg:flex-row gap-6 overflow-hidden">
-        
-        {/* Workspace - Left/Center */}
-        <div className="flex-1 flex flex-col gap-6 min-w-0">
-          <section className="card flex-1 min-h-[400px] relative overflow-hidden flex items-center justify-center">
+    <Layout
+      language={targetLanguage}
+      setLanguage={setTargetLanguage}
+      isProcessing={isProcessing}
+      engineState={engineState}
+      operatorName={operatorName}
+      onLogout={handleLogout}
+    >
+      <main className="workspace-shell">
+        <div className="workspace-primary">
+          <section className="panel camera-panel" id="camera">
             <CameraStage
               isProcessing={isProcessing}
               setIsProcessing={setIsProcessing}
@@ -56,35 +119,41 @@ function App() {
             />
           </section>
 
-          <section className="card h-1/4 min-h-[150px]">
+          <section className="panel output-panel" id="transcription">
             <OutputPanel transcription={transcription} engineState={engineState} />
           </section>
         </div>
 
-        {/* Messaging & Tools - Right Sidebar */}
-        <aside className="w-full lg:w-96 flex flex-col gap-6 ">
-          <section className="card flex-1 flex flex-col overflow-hidden">
-            <MessagingModule chatHistory={chatHistory} messageDraft={messageDraft} />
+        <aside className="workspace-rail">
+          <section className="panel messaging-panel" id="messages">
+            <MessagingModule
+              chatHistory={chatHistory}
+              messageDraft={messageDraft}
+              onSend={sendCurrentDraft}
+              onClear={clearDraft}
+              onReplay={replayDraft}
+            />
           </section>
           
-          <section className="card">
-            <GestureControlPanel />
+          <section className="panel gestures-panel" id="gestures">
+            <GestureControlPanel engineState={engineState} />
           </section>
         </aside>
 
       </main>
 
-      {/* Status Bar */}
-      <footer className="h-12 border-t border-slate-700 bg-slate-900 px-6 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+      <footer className="status-bar">
+        <div className="status-cluster">
+          <span className="status-chip">
+            <span className={`live-dot ${isProcessing ? 'live-dot--on' : 'live-dot--off'}`}></span>
             {isProcessing ? 'System Active' : 'System Paused'}
           </span>
-          <span className="text-slate-500">|</span>
-          <span className="text-slate-400">FPS: 30</span>
+          <span className="status-divider"></span>
+          <span>Confidence {(engineState.confidence * 100).toFixed(0)}%</span>
+          <span className="status-divider"></span>
+          <span>{engineState.pose || 'No pose'}</span>
         </div>
-        <div className="font-mono text-blue-400">
+        <div className="engine-version">
           Silentlink Engine v1.0.0
         </div>
       </footer>

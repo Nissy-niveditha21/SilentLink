@@ -4,7 +4,7 @@ import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 interface Props {
   onProcessingChange: (status: boolean) => void;
   onPrediction: (text: string) => void;
-  onCommand: (cmd: 'append' | 'clear_message' | 'send_message', payload?: string) => void;
+  onCommand: (cmd: 'append' | 'backspace' | 'clear_message' | 'send_message', payload?: string) => void;
   targetLanguage: string;
   onEngineState: (state: { status: string; pose: string; progress: number; confidence: number }) => void;
 }
@@ -14,9 +14,23 @@ const WebcamView: React.FC<Props> = ({ onProcessingChange, onPrediction, onComma
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasCameraError, setHasCameraError] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const targetLanguageRef = useRef(targetLanguage);
+  const handlersRef = useRef({ onProcessingChange, onPrediction, onCommand, onEngineState });
 
   useEffect(() => {
-    // Initialize WebSocket
+    targetLanguageRef.current = targetLanguage;
+  }, [targetLanguage]);
+
+  useEffect(() => {
+    handlersRef.current = { onProcessingChange, onPrediction, onCommand, onEngineState };
+  }, [onProcessingChange, onPrediction, onCommand, onEngineState]);
+
+  useEffect(() => {
+    let isMounted = true;
+    let reconnectTimer: number | undefined;
+    let activeStream: MediaStream | null = null;
+    let activeVideo: HTMLVideoElement | null = null;
+
     const connectWs = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const ws = new WebSocket(`${protocol}//${window.location.host}/ws/landmarks`);
@@ -26,21 +40,23 @@ const WebcamView: React.FC<Props> = ({ onProcessingChange, onPrediction, onComma
           const result = JSON.parse(event.data);
           
           if (result.status) {
-             onEngineState({ status: result.status, pose: result.pose || '', progress: result.progress || 0, confidence: result.confidence || 0 });
+             handlersRef.current.onEngineState({ status: result.status, pose: result.pose || '', progress: result.progress || 0, confidence: result.confidence || 0 });
           }
           if (result.transcription) {
-            onPrediction(result.transcription);
+            handlersRef.current.onPrediction(result.transcription);
           }
           if (result.command) {
             console.log("System Command Triggered:", result.command);
-            onCommand(result.command, result.text);
+            handlersRef.current.onCommand(result.command, result.text);
           }
         } catch (e) {
              console.error('Error parsing backend WS message', e);
         }
       };
       ws.onclose = () => {
-         setTimeout(connectWs, 2000); // Reconnect
+         if (isMounted) {
+           reconnectTimer = window.setTimeout(connectWs, 2000);
+         }
       };
       ws.onerror = (err) => console.error('WebSocket error:', err);
       wsRef.current = ws;
@@ -75,9 +91,12 @@ const WebcamView: React.FC<Props> = ({ onProcessingChange, onPrediction, onComma
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.addEventListener('loadeddata', predictWebcam);
+        activeStream = stream;
+        activeVideo = videoRef.current;
+
+        if (activeVideo) {
+          activeVideo.srcObject = stream;
+          activeVideo.addEventListener('loadeddata', predictWebcam);
         }
       } catch {
         setHasCameraError(true);
@@ -93,7 +112,7 @@ const WebcamView: React.FC<Props> = ({ onProcessingChange, onPrediction, onComma
       const startTimeMs = performance.now();
       if (lastVideoTime !== video.currentTime) {
         lastVideoTime = video.currentTime;
-        onProcessingChange(true);
+        handlersRef.current.onProcessingChange(true);
         const results = handLandmarker.detectForVideo(video, startTimeMs);
         
         const ctx = canvas.getContext('2d');
@@ -107,7 +126,7 @@ const WebcamView: React.FC<Props> = ({ onProcessingChange, onPrediction, onComma
                 // Throttle sending periodically in a real scenario, but for now send every frame (or rely on backend throttling)
                 wsRef.current.send(JSON.stringify({
                     landmarks: results.landmarks,
-                    target_lang: targetLanguage
+                    target_lang: targetLanguageRef.current
                 }));
             }
 
@@ -115,12 +134,14 @@ const WebcamView: React.FC<Props> = ({ onProcessingChange, onPrediction, onComma
               for (const point of landmarks) {
                  ctx.beginPath();
                  ctx.arc(point.x * canvas.width, point.y * canvas.height, 4, 0, 2 * Math.PI);
-                 ctx.fillStyle = "#3b82f6"; // blue-500
+                 ctx.fillStyle = "#2dd4bf";
+                 ctx.shadowColor = "rgba(45, 212, 191, 0.75)";
+                 ctx.shadowBlur = 8;
                  ctx.fill();
-                 ctx.restore();
               }
             }
           }
+          ctx.restore();
         }
       }
       animationFrameId = requestAnimationFrame(predictWebcam);
@@ -129,33 +150,36 @@ const WebcamView: React.FC<Props> = ({ onProcessingChange, onPrediction, onComma
     initializeMediaPipe();
 
     return () => {
+      isMounted = false;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       if (handLandmarker) handLandmarker.close();
       if (wsRef.current) wsRef.current.close();
-      if (videoRef.current && videoRef.current.srcObject) {
-         const stream = videoRef.current.srcObject as MediaStream;
-         stream.getTracks().forEach(track => track.stop());
+      if (activeVideo) {
+        activeVideo.removeEventListener('loadeddata', predictWebcam);
+        activeVideo.srcObject = null;
+      }
+      if (activeStream) {
+         activeStream.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
 
   if (hasCameraError) {
-    return <div className="text-red-400">Error: Could not access camera. Please allow camera permissions.</div>;
+    return <div className="camera-error">Error: Could not access camera. Please allow camera permissions.</div>;
   }
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center">
+    <div className="webcam-layer">
       <video
         ref={videoRef}
         autoPlay
         playsInline
-        className="absolute w-full h-full object-cover"
-        style={{ transform: "scaleX(-1)" }}
+        className="webcam-video"
       ></video>
       <canvas
         ref={canvasRef}
-        className="absolute w-full h-full object-cover pointer-events-none z-10"
-        style={{ transform: "scaleX(-1)" }}
+        className="webcam-canvas"
         width={1280}
         height={720}
       ></canvas>

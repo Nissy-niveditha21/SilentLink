@@ -1,50 +1,76 @@
 import React from 'react';
-import { MessageSquare, Send } from 'lucide-react';
+import { MessageSquare, RotateCcw, Send, Trash2, Volume2 } from 'lucide-react';
 
 type ChatMessage = { text: string; time: string };
 
 interface Props {
   chatHistory: ChatMessage[];
   messageDraft: string;
+  onSend: () => void;
+  onClear: () => void;
+  onReplay: () => void;
 }
 
-export const MessagingModule: React.FC<Props> = ({ chatHistory, messageDraft }) => {
+export const MessagingModule: React.FC<Props> = ({ chatHistory, messageDraft, onSend, onClear, onReplay }) => {
   return (
-    <div className="h-full flex flex-col">
-      <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2 border-b border-slate-700 pb-2">
-        <MessageSquare className="w-4 h-4 text-blue-500" /> Messaging Composer
-      </h2>
+    <div className="messaging-module">
+      <div className="section-heading section-heading--compact">
+        <div>
+          <span className="section-kicker"><MessageSquare /> Messaging</span>
+          <h2>Composer</h2>
+        </div>
+        <div className="composer-actions" aria-label="Composer actions">
+          <button type="button" className="icon-button" onClick={onReplay} title="Speak draft or last message">
+            <Volume2 />
+          </button>
+          <button type="button" className="icon-button" onClick={onClear} title="Clear draft">
+            <Trash2 />
+          </button>
+        </div>
+      </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1 flex flex-col">
+      <div className="chat-history">
         {chatHistory.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-40">
-            <MessageSquare className="w-10 h-10 mb-2" />
-            <p className="text-xs font-medium italic">Compose via ASL gestures...</p>
+          <div className="empty-chat">
+            <MessageSquare />
+            <p>Compose via gestures or manual controls.</p>
           </div>
         ) : (
           chatHistory.map((msg, i) => (
             <div
               key={i}
-              className="self-end bg-blue-600/20 border border-blue-500/30 text-slate-100 rounded-lg p-3 text-sm relative max-w-[80%]"
+              className="chat-bubble"
             >
-              {msg.text}
-              <div className="text-[9px] text-blue-400 mt-1 text-right">{msg.time}</div>
+              <span>{msg.text}</span>
+              <time>{msg.time}</time>
             </div>
           ))
         )}
       </div>
 
-      <div className="mt-auto pt-4 border-t border-slate-700 relative">
+      <div className="composer">
         <input
           type="text"
           value={messageDraft}
           readOnly
           placeholder="Awaiting entry..."
-          className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-4 pr-12 py-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition-colors"
+          className="composer-input"
+          aria-label="Current gesture-composed message"
         />
-        <div className="absolute right-2 top-[calc(1rem+4px)] p-2 bg-blue-600 rounded-md shadow-md text-white">
-          <Send className="w-4 h-4" />
-        </div>
+        <button
+          type="button"
+          className="send-button"
+          onClick={onSend}
+          disabled={messageDraft.trim().length === 0}
+          title="Send message"
+        >
+          <Send />
+        </button>
+      </div>
+
+      <div className="gesture-hint">
+        <RotateCcw />
+        <span>Thumbs up sends. Pinky clears. Ring-only backspaces. Palm, OK, V, Y, and ILY append quick phrases.</span>
       </div>
     </div>
   );

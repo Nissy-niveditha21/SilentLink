@@ -30,6 +30,9 @@ def detect_asl_letter(hand):
              return "Y"
     return None
 
+def point_distance(a, b):
+    return math.sqrt((a['x'] - b['x'])**2 + (a['y'] - b['y'])**2)
+
 class GestureEngine:
     def __init__(self):
         self.last_command_time = 0.0
@@ -92,6 +95,7 @@ class GestureEngine:
         thumb_tip = hand[4]
         index_tip = hand[8]
         middle_tip = hand[12]
+        ring_tip = hand[16]
         pinky_tip = hand[20]
         wrist = hand[0]
         
@@ -104,13 +108,34 @@ class GestureEngine:
         # --- Global Finger States ---
         index_up = index_tip['y'] < hand[6]['y']
         middle_up = middle_tip['y'] < hand[10]['y']
-        ring_up = hand[16]['y'] < hand[14]['y']
+        ring_up = ring_tip['y'] < hand[14]['y']
         pinky_up = pinky_tip['y'] < hand[18]['y']
+        thumb_up = thumb_tip['y'] < hand[3]['y']
+        thumb_down = thumb_tip['y'] > hand[3]['y'] + 0.08
         ring_down = not ring_up
         pinky_down = not pinky_up
+        fingers_folded = not index_up and not middle_up and ring_down and pinky_down
+        thumb_out = thumb_tip['x'] > hand[5]['x'] + 0.05
+        four_fingers_up = index_up and middle_up and ring_up and pinky_up
+        all_up = four_fingers_up and thumb_out
+        index_middle_distance = point_distance(index_tip, middle_tip)
+
+        # --- Priority Message Commands ---
+        # Send Message (Thumbs Up)
+        if thumb_up and fingers_folded:
+             return self._evaluate_hold("Thumbs Up", {"transcription": "Thumbs Up! (Message Sent)", "command": "send_message", "confidence": 0.95}, current_time)
+
+        # Append No (Thumbs Down)
+        if thumb_down and fingers_folded:
+             return self._evaluate_hold("Thumbs Down (No)", {
+                "transcription": "No",
+                "command": "append",
+                "text": "No ",
+                "confidence": 0.9
+             }, current_time)
 
         # Fist / Stop tracking
-        if not index_up and not middle_up and pinky_down:
+        if fingers_folded and not thumb_up:
              self.cursor.toggle_active(False)
              self.current_holding_intent = None
              return {"status": "conflict", "pose": "Closed Fist", "transcription": "Tracking Paused (Fist)", "confidence": 0.95}
@@ -120,10 +145,36 @@ class GestureEngine:
         # Continuous Cursor Control
         self.cursor.update_cursor(index_tip['x'], index_tip['y'])
 
+        # Two open palms: Thank you
+        if len(landmarks_data) > 1:
+            second_hand = landmarks_data[1]
+            if len(second_hand) >= 21:
+                second_open = (
+                    second_hand[8]['y'] < second_hand[6]['y'] and
+                    second_hand[12]['y'] < second_hand[10]['y'] and
+                    second_hand[16]['y'] < second_hand[14]['y'] and
+                    second_hand[20]['y'] < second_hand[18]['y']
+                )
+                if four_fingers_up and second_open:
+                    return self._evaluate_hold("Two Palms (Thank You)", {
+                        "transcription": "Thank you",
+                        "command": "append",
+                        "text": "Thank you ",
+                        "confidence": 0.96
+                    }, current_time)
+
+        # OK sign: thumb and index pinched while the other fingers are raised.
+        if distance < 0.05 and middle_up and ring_up and pinky_up:
+            return self._evaluate_hold("OK Sign", {
+                "transcription": "OK",
+                "command": "append",
+                "text": "OK ",
+                "confidence": 0.94
+            }, current_time)
+
         # Scroll
         if index_up and middle_up and ring_down and pinky_down:
-            dist_im = math.sqrt((index_tip['x']-middle_tip['x'])**2 + (index_tip['y']-middle_tip['y'])**2)
-            if dist_im < 0.08:
+            if index_middle_distance < 0.08:
                 self.current_holding_intent = None
                 avg_y = (index_tip['y'] + middle_tip['y']) / 2
                 if self.last_scroll_y is None:
@@ -163,9 +214,6 @@ class GestureEngine:
                     return {"status": "confirmed", "pose": "Drop", "transcription": "Dropped", "command": "drop"}
 
         # --- Basic Signs & Words ---
-        thumb_out = thumb_tip['x'] > hand[5]['x'] + 0.05
-        all_up = index_up and middle_up and ring_up and pinky_up and thumb_out
-        
         # Hello (Open Palm)
         if all_up:
             return self._evaluate_hold("Palm Open (Hello)", {
@@ -173,6 +221,50 @@ class GestureEngine:
                 "command": "append", 
                 "text": "Hello ", 
                 "confidence": 0.98
+            }, current_time)
+
+        # Please (four fingers up, thumb tucked)
+        if four_fingers_up and not thumb_out:
+            return self._evaluate_hold("Flat Palm (Please)", {
+                "transcription": "Please",
+                "command": "append",
+                "text": "Please ",
+                "confidence": 0.9
+            }, current_time)
+
+        # I love you (thumb, index and pinky extended)
+        if thumb_out and index_up and not middle_up and ring_down and pinky_up:
+            return self._evaluate_hold("ILY Sign", {
+                "transcription": "I love you",
+                "command": "append",
+                "text": "I love you ",
+                "confidence": 0.93
+            }, current_time)
+
+        # Yes (peace sign with spread fingers)
+        if index_up and middle_up and ring_down and pinky_down and index_middle_distance > 0.09:
+            return self._evaluate_hold("V Sign (Yes)", {
+                "transcription": "Yes",
+                "command": "append",
+                "text": "Yes ",
+                "confidence": 0.9
+            }, current_time)
+
+        # Need help (phone/Y sign)
+        if not index_up and not middle_up and ring_down and pinky_up and thumb_out:
+            return self._evaluate_hold("Y Sign (Help)", {
+                "transcription": "Need help",
+                "command": "append",
+                "text": "Need help ",
+                "confidence": 0.9
+            }, current_time)
+
+        # Backspace (ring finger only)
+        if not index_up and not middle_up and ring_up and pinky_down:
+            return self._evaluate_hold("Ring Finger (Backspace)", {
+                "transcription": "Backspace",
+                "command": "backspace",
+                "confidence": 0.88
             }, current_time)
 
         # Launch WhatsApp (W Sign)
@@ -183,11 +275,6 @@ class GestureEngine:
                 "app_name": "whatsapp",
                 "confidence": 0.95
             }, current_time)
-
-        # Discrete Hold-to-Confirm Actions
-        # Send Message (Thumbs Up)
-        if thumb_tip['y'] < hand[5]['y'] - 0.05 and index_tip['y'] > hand[5]['y']:
-             return self._evaluate_hold("Thumbs Up", {"transcription": "Thumbs Up! (Message Sent)", "command": "send_message", "confidence": 0.95}, current_time)
 
         # Clear Message (Pinky Up)
         if pinky_tip['y'] < hand[17]['y'] - 0.05 and index_tip['y'] > hand[5]['y'] and middle_tip['y'] > hand[9]['y']:
