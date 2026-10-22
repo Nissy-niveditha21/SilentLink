@@ -1,2 +1,30 @@
+
+[project]
+name = "silentlink"
+version = "0.1.0"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic>=2",
+    "pydantic-settings",
+    "websockets",
+    "python-multipart",
+    "python-dotenv",
+    "itsdangerous",
+    "SQLAlchemy",
+    "werkzeug",
+    "opencv-python==4.8.1.78",
+    "opencv-contrib-python==4.8.1.78",
+    "mediapipe==0.10.14",
+    "numpy==1.26.4",
+    "matplotlib==3.7.5",
+    "pillow==10.4.0",
+    "pyautogui",
+    "scikit-learn",
+    "Jinja2",
+    "pyttsx3",
+]
+
 [tool.vercel]
 entrypoint = "backend.main:app"
