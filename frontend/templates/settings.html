@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% block title %}Settings — SilentLink{% endblock %}
+
+{% block content %}
+<section class="settings-page" aria-label="User settings page">
+    <div class="history-header fade-up">
+        <span class="eyebrow">Preferences</span>
+        <h1>Settings</h1>
+        <p>Adjust recognition behavior, display language, and accessibility options. Changes are saved to your browser.</p>
+    </div>
+
+    <div class="settings-grid fade-up fade-up-1" role="list">
+
+        <fieldset class="settings-card" aria-labelledby="recognition-heading">
+            <legend id="recognition-heading" class="settings-legend"><span class="card-icon">🧠</span> Recognition</legend>
+
+            <div class="setting-row">
+                <label for="pref-threshold">Confidence threshold</label>
+                <div class="setting-control">
+                    <input type="range" id="pref-threshold" min="0.2" max="0.95" step="0.05" value="0.6" aria-describedby="threshold-hint">
+                    <output id="threshold-value" for="pref-threshold">60%</output>
+                </div>
+                <p class="setting-hint" id="threshold-hint">Lower values recognize more signs but may hallucinate. Higher values are stricter.</p>
+            </div>
+
+            <div class="setting-row">
+                <label for="pref-hold">Hold frames</label>
+                <div class="setting-control">
+                    <input type="number" id="pref-hold" min="1" max="30" step="1" value="8" aria-describedby="hold-hint">
+                </div>
+                <p class="setting-hint" id="hold-hint">How many consecutive frames a sign must be seen before being confirmed.</p>
+            </div>
+
+            <div class="setting-row">
+                <label for="pref-timeout">Word timeout (ms)</label>
+                <div class="setting-control">
+                    <input type="number" id="pref-timeout" min="300" max="6000" step="100" value="1800" aria-describedby="timeout-hint">
+                </div>
+                <p class="setting-hint" id="timeout-hint">Idle time after which the current fingerspelled word is auto-committed.</p>
+            </div>
+        </fieldset>
+
+        <fieldset class="settings-card" aria-labelledby="display-heading">
+            <legend id="display-heading" class="settings-legend"><span class="card-icon">🌐</span> Display &amp; Speech</legend>
+
+            <div class="setting-row">
+                <label for="pref-language">Primary language</label>
+                <div class="setting-control">
+                    <select id="pref-language">
+                        <option value="en">English</option>
+                        <option value="hi">हिन्दी (Hindi)</option>
+                        <option value="te">తెలుగు (Telugu)</option>
+                        <option value="es">Español (Spanish)</option>
+                        <option value="fr">Français (French)</option>
+                    </select>
+                </div>
+                <p class="setting-hint">Primary language shown first in the phrase card.</p>
+            </div>
+
+            <div class="setting-row">
+                <label for="pref-ttsrate">Speech rate</label>
+                <div class="setting-control">
+                    <input type="range" id="pref-ttsrate" min="0.5" max="2" step="0.1" value="1" aria-describedby="ttsrate-hint">
+                    <output id="ttsrate-value" for="pref-ttsrate">1.0×</output>
+                </div>
+                <p class="setting-hint" id="ttsrate-hint">Speech synthesis playback speed.</p>
+            </div>
+
+            <div class="setting-row setting-row-toggle">
+                <label for="pref-lands">Show landmark overlay</label>
+                <div class="setting-control">
+                    <label class="switch">
+                        <input type="checkbox" id="pref-lands" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-row setting-row-toggle">
+                <label for="pref-speakauto">Auto-speak confirmed sentences</label>
+                <div class="setting-control">
+                    <label class="switch">
+                        <input type="checkbox" id="pref-speakauto">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="settings-card" aria-labelledby="accessibility-heading">
+            <legend id="accessibility-heading" class="settings-legend"><span class="card-icon">♿</span> Accessibility</legend>
+
+            <div class="setting-row setting-row-toggle">
+                <label for="pref-reducemotion">Reduce motion</label>
+                <div class="setting-control">
+                    <label class="switch">
+                        <input type="checkbox" id="pref-reducemotion">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-row setting-row-toggle">
+                <label for="pref-customcursor">Custom cursor</label>
+                <div class="setting-control">
+                    <label class="switch">
+                        <input type="checkbox" id="pref-customcursor" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <label for="pref-font">Text size</label>
+                <div class="setting-control">
+                    <select id="pref-font">
+                        <option value="1">Default</option>
+                        <option value="1.15">Large</option>
+                        <option value="1.3">Extra large</option>
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+
+    </div>
+
+    <div class="settings-actions fade-up fade-up-2">
+        <button class="btn-primary" id="btn-save-settings" aria-label="Save settings">💾 Save Changes</button>
+        <button class="btn-secondary" id="btn-reset-settings" aria-label="Reset settings to defaults">Reset to Defaults</button>
+        <output class="save-status" id="save-status" aria-live="polite"></output>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const KEY = 'silentlink:settings';
+    const DEFAULTS = {
+        threshold: 0.6, hold: 8, timeout: 1800,
+        language: 'en', ttsrate: 1.0,
+        lands: true, speakauto: false,
+        reducemotion: false, customcursor: true, font: '1'
+    };
+
+    const fields = ['threshold', 'hold', 'timeout', 'language', 'ttsrate', 'lands', 'speakauto', 'reducemotion', 'customcursor', 'font'];
+
+    function load() {
+        try { return { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY) || '{}')) }; }
+        catch { return { ...DEFAULTS }; }
+    }
+
+    function save(s) { localStorage.setItem(KEY, JSON.stringify(s)); }
+
+    function getVal(id) {
+        const el = document.getElementById('pref-' + id);
+        if (!el) return DEFAULTS[id];
+        if (el.type === 'checkbox') return el.checked;
+        if (el.type === 'number' || el.type === 'range') return parseFloat(el.value);
+        return el.value;
+    }
+
+    function setVal(id, v) {
+        const el = document.getElementById('pref-' + id);
+        if (!el) return;
+        if (el.type === 'checkbox') el.checked = !!v;
+        else el.value = v;
+        updateOutputs();
+    }
+
+    function updateOutputs() {
+        const thresh = document.getElementById('pref-threshold').value;
+        document.getElementById('threshold-value').textContent = Math.round(parseFloat(thresh) * 100) + '%';
+        const rate = document.getElementById('pref-ttsrate').value;
+        document.getElementById('ttsrate-value').textContent = parseFloat(rate).toFixed(1) + '×';
+    }
+
+    function apply(s) {
+        document.documentElement.style.setProperty('--user-font-scale', s.font);
+        document.body.classList.toggle('user-reduce-motion', !!s.reducemotion);
+        document.body.classList.toggle('user-no-custom-cursor', !s.customcursor);
+        document.documentElement.lang = s.language;
+    }
+
+    const state = load();
+    fields.forEach(id => setVal(id, state[id]));
+    apply(state);
+
+    ['threshold', 'ttsrate'].forEach(id => {
+        document.getElementById('pref-' + id).addEventListener('input', updateOutputs);
+    });
+
+    document.getElementById('btn-save-settings').addEventListener('click', () => {
+        const s = {};
+        fields.forEach(id => { s[id] = getVal(id); });
+        save(s); apply(s);
+        const out = document.getElementById('save-status');
+        out.textContent = '✓ Saved ' + new Date().toLocaleTimeString();
+        setTimeout(() => out.textContent = '', 2500);
+    });
+
+    document.getElementById('btn-reset-settings').addEventListener('click', () => {
+        if (!confirm('Reset all settings to defaults?')) return;
+        save(DEFAULTS); fields.forEach(id => setVal(id, DEFAULTS[id])); apply(DEFAULTS);
+        document.getElementById('save-status').textContent = '↺ Reset to defaults';
+        setTimeout(() => document.getElementById('save-status').textContent = '', 2500);
+    });
+})();
+</script>
+{% endblock %}

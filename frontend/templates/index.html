@@ -1,0 +1,61 @@
+﻿{% extends 'base.html' %}
+{% block title %}SilentLink — AI Sign Language Recognition{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-copy fade-up">
+        <span class="eyebrow">AI-Powered Communication</span>
+        <h1>Bridge Silence with Real-Time Sign Language</h1>
+        <p>Translate ASL hand gestures into text and speech instantly — powered by computer vision and a neural network
+            trained on expressive sign data.</p>
+        <div class="hero-actions">
+            <a href="/signup" class="btn-primary">Get Started Free</a>
+            <a href="/about" class="btn-secondary">Learn More</a>
+        </div>
+    </div>
+
+    <div class="hero-visual fade-up fade-up-2">
+        <div class="stat-card">
+            <h2>88%</h2>
+            <p>Reliable alphabet recognition across all 26 ISL letters</p>
+        </div>
+        <div class="stat-card">
+            <h2>Real-Time</h2>
+            <p>Instant video-based translation with zero delay</p>
+        </div>
+        <div class="stat-card">
+            <h2>2 Languages</h2>
+            <p>Voice output in English and French for phrase signs</p>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="features">
+    <div class="section-heading fade-up">
+        <span class="eyebrow">Why SilentLink</span>
+        <h2>Professional, accessible, and built for real use</h2>
+    </div>
+
+    <div class="feature-grid">
+        <article class="feature-card fade-up fade-up-1">
+            <div class="feature-icon">⚡</div>
+            <h3>Real-Time Detection</h3>
+            <p>Recognizes each sign in milliseconds so communication stays natural and uninterrupted.</p>
+        </article>
+        <article class="feature-card fade-up fade-up-2">
+            <div class="feature-icon">🧠</div>
+            <h3>Smart AI Engine</h3>
+            <p>Powered by a CNN trained on thousands of ASL gesture images for high accuracy.</p>
+        </article>
+        <article class="feature-card fade-up fade-up-3">
+            <div class="feature-icon">🌐</div>
+            <h3>Multilingual Voice</h3>
+            <p>Phrase signs are spoken aloud in English and French using natural text-to-speech.</p>
+        </article>
+    </div>
+</section>
+
+{% endblock %}

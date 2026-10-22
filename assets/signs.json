@@ -1,0 +1,452 @@
+{
+  "HELLO": {
+    "display": "Hello",
+    "description": "Friendly greeting with a waving hand",
+    "type": "phrase",
+    "video": "/assets/signs/HELLO/clip.gif",
+    "image": "/assets/signs/HELLO/placeholder.svg",
+    "svg_animation": "wave",
+    "translations": {
+      "en": "Hello",
+      "hi": "नमस्ते",
+      "te": "నమస్కారం",
+      "es": "Hola",
+      "fr": "Bonjour"
+    }
+  },
+  "HI": {
+    "display": "Hi",
+    "description": "Informal greeting with a waving hand (alias of HELLO)",
+    "type": "phrase",
+    "video": "/assets/signs/HI/clip.gif",
+    "image": "/assets/signs/HELLO/placeholder.svg",
+    "svg_animation": "wave",
+    "translations": {
+      "en": "Hi",
+      "hi": "नमस्ते",
+      "te": "నమస్కారం",
+      "es": "Hola",
+      "fr": "Bonjour"
+    }
+  },
+  "YES": {
+    "display": "Yes",
+    "description": "Affirmation with a nodding or thumb-up gesture",
+    "type": "phrase",
+    "video": "/assets/signs/YES/clip.gif",
+    "image": "/assets/signs/YES/placeholder.svg",
+    "svg_animation": "thumb",
+    "translations": {
+      "en": "Yes",
+      "hi": "हाँ",
+      "te": "అవును",
+      "es": "Sí",
+      "fr": "Oui"
+    }
+  },
+  "NO": {
+    "display": "No",
+    "description": "Denial with an open palm facing outward",
+    "type": "phrase",
+    "video": "/assets/signs/NO/clip.gif",
+    "image": "/assets/signs/NO/placeholder.svg",
+    "svg_animation": "palm",
+    "translations": {
+      "en": "No",
+      "hi": "नहीं",
+      "te": "కాదు",
+      "es": "No",
+      "fr": "Non"
+    }
+  },
+  "THANK_YOU": {
+    "display": "Thank You",
+    "description": "Gratitude gesture with hand near the chin",
+    "type": "phrase",
+    "video": "/assets/signs/THANK_YOU/clip.gif",
+    "image": "/assets/signs/THANK_YOU/placeholder.svg",
+    "svg_animation": "thumb",
+    "translations": {
+      "en": "Thank You",
+      "hi": "धन्यवाद",
+      "te": "ధన్యవాదాలు",
+      "es": "Gracias",
+      "fr": "Merci"
+    }
+  },
+  "PLEASE": {
+    "display": "Please",
+    "description": "Polite request with palm facing upward",
+    "type": "phrase",
+    "video": "/assets/signs/PLEASE/clip.gif",
+    "image": "/assets/signs/PLEASE/placeholder.svg",
+    "svg_animation": "palm",
+    "translations": {
+      "en": "Please",
+      "hi": "कृपया",
+      "te": "దయచేసి",
+      "es": "Por favor",
+      "fr": "S'il vous plaît"
+    }
+  },
+  "SORRY": {
+    "display": "Sorry",
+    "description": "Apology gesture with fist against chest",
+    "type": "phrase",
+    "video": "/assets/signs/SORRY/clip.gif",
+    "image": "/assets/signs/SORRY/placeholder.svg",
+    "svg_animation": "fist",
+    "translations": {
+      "en": "Sorry",
+      "hi": "माफ़ करना",
+      "te": "క్షమించండి",
+      "es": "Perdón",
+      "fr": "Désolé"
+    }
+  },
+  "HELP": {
+    "display": "Help",
+    "description": "Call for assistance with both palms up",
+    "type": "phrase",
+    "video": "/assets/signs/HELP/clip.gif",
+    "image": "/assets/signs/HELP/placeholder.svg",
+    "svg_animation": "palm",
+    "translations": {
+      "en": "Help",
+      "hi": "मदद",
+      "te": "సహాయం",
+      "es": "Ayuda",
+      "fr": "Aide"
+    }
+  },
+  "GOOD": {
+    "display": "Good",
+    "description": "Positive approval with a thumbs-up",
+    "type": "phrase",
+    "video": "/assets/signs/GOOD/clip.gif",
+    "image": "/assets/signs/GOOD/placeholder.svg",
+    "svg_animation": "thumb",
+    "translations": {
+      "en": "Good",
+      "hi": "अच्छा",
+      "te": "మంచి",
+      "es": "Bien",
+      "fr": "Bien"
+    }
+  },
+  "BAD": {
+    "display": "Bad",
+    "description": "Negative disapproval with a thumbs-down",
+    "type": "phrase",
+    "video": "/assets/signs/BAD/clip.gif",
+    "image": "/assets/signs/BAD/placeholder.svg",
+    "svg_animation": "fist",
+    "translations": {
+      "en": "Bad",
+      "hi": "बुरा",
+      "te": "చెడ్డ",
+      "es": "Mal",
+      "fr": "Mauvais"
+    }
+  },
+  "I": {
+    "display": "I",
+    "description": "First-person reference pointing to chest",
+    "type": "phrase",
+    "video": "/assets/signs/I/clip.gif",
+    "image": "/assets/signs/I/placeholder.svg",
+    "svg_animation": "point",
+    "translations": {
+      "en": "I",
+      "hi": "मैं",
+      "te": "నేను",
+      "es": "Yo",
+      "fr": "Je"
+    }
+  },
+  "YOU": {
+    "display": "You",
+    "description": "Second-person reference pointing outward",
+    "type": "phrase",
+    "video": "/assets/signs/YOU/clip.gif",
+    "image": "/assets/signs/YOU/placeholder.svg",
+    "svg_animation": "point",
+    "translations": {
+      "en": "You",
+      "hi": "तुम",
+      "te": "నువ్వు",
+      "es": "Tú",
+      "fr": "Tu"
+    }
+  },
+  "WE": {
+    "display": "We",
+    "description": "Group reference circling chest and outward",
+    "type": "phrase",
+    "video": "/assets/signs/WE/clip.gif",
+    "image": "/assets/signs/WE/placeholder.svg",
+    "svg_animation": "generic",
+    "translations": {
+      "en": "We",
+      "hi": "हम",
+      "te": "మేము",
+      "es": "Nosotros",
+      "fr": "Nous"
+    }
+  },
+  "WHAT": {
+    "display": "What",
+    "description": "Question gesture with palms up inquiringly",
+    "type": "phrase",
+    "video": "/assets/signs/WHAT/clip.gif",
+    "image": "/assets/signs/WHAT/placeholder.svg",
+    "svg_animation": "point",
+    "translations": {
+      "en": "What",
+      "hi": "क्या",
+      "te": "ఏమి",
+      "es": "¿Qué?",
+      "fr": "Quoi?"
+    }
+  },
+  "WHERE": {
+    "display": "Where",
+    "description": "Location question with searching hands",
+    "type": "phrase",
+    "video": "/assets/signs/WHERE/clip.gif",
+    "image": "/assets/signs/WHERE/placeholder.svg",
+    "svg_animation": "point",
+    "translations": {
+      "en": "Where",
+      "hi": "कहाँ",
+      "te": "ఎక్కడ",
+      "es": "Dónde",
+      "fr": "Où"
+    }
+  },
+  "HOW": {
+    "display": "How",
+    "description": "Manner question with circular hand motion",
+    "type": "phrase",
+    "video": "/assets/signs/HOW/clip.gif",
+    "image": "/assets/signs/HOW/placeholder.svg",
+    "svg_animation": "point",
+    "translations": {
+      "en": "How",
+      "hi": "कैसा",
+      "te": "ఎలా",
+      "es": "Cómo",
+      "fr": "Comment"
+    }
+  },
+  "NAME": {
+    "display": "Name",
+    "description": "Indicating a name or label",
+    "type": "phrase",
+    "video": "/assets/signs/NAME/clip.gif",
+    "image": "/assets/signs/NAME/placeholder.svg",
+    "svg_animation": "point",
+    "translations": {
+      "en": "Name",
+      "hi": "नाम",
+      "te": "పేరు",
+      "es": "Nombre",
+      "fr": "Nom"
+    }
+  },
+  "FOOD": {
+    "display": "Food",
+    "description": "Eating gesture bringing hand to mouth",
+    "type": "phrase",
+    "video": "/assets/signs/FOOD/clip.gif",
+    "image": "/assets/signs/FOOD/placeholder.svg",
+    "svg_animation": "generic",
+    "translations": {
+      "en": "Food",
+      "hi": "भोजन",
+      "te": "ఆహారం",
+      "es": "Comida",
+      "fr": "Nourriture"
+    }
+  },
+  "WATER": {
+    "display": "Water",
+    "description": "Drinking gesture with cupped hand",
+    "type": "phrase",
+    "video": "/assets/signs/WATER/clip.gif",
+    "image": "/assets/signs/WATER/placeholder.svg",
+    "svg_animation": "generic",
+    "translations": {
+      "en": "Water",
+      "hi": "पानी",
+      "te": "నీరు",
+      "es": "Agua",
+      "fr": "Eau"
+    }
+  },
+  "STOP": {
+    "display": "Stop",
+    "description": "Halt signal with open palm forward",
+    "type": "phrase",
+    "video": "/assets/signs/STOP/clip.gif",
+    "image": "/assets/signs/STOP/placeholder.svg",
+    "svg_animation": "palm",
+    "translations": {
+      "en": "Stop",
+      "hi": "रुको",
+      "te": "ఆపు",
+      "es": "Para",
+      "fr": "Arrête"
+    }
+  },
+  "GO": {
+    "display": "Go",
+    "description": "Forward motion gesture with pushing hand",
+    "type": "phrase",
+    "video": "/assets/signs/GO/clip.gif",
+    "image": "/assets/signs/GO/placeholder.svg",
+    "svg_animation": "generic",
+    "translations": {
+      "en": "Go",
+      "hi": "जाओ",
+      "te": "వెళ్ళు",
+      "es": "Ir",
+      "fr": "Allez"
+    }
+  },
+  "BYE": {
+    "display": "Bye",
+    "description": "Farewell with a waving hand",
+    "type": "phrase",
+    "video": "/assets/signs/BYE/clip.gif",
+    "image": "/assets/signs/BYE/placeholder.svg",
+    "svg_animation": "wave",
+    "translations": {
+      "en": "Bye",
+      "hi": "अलविदा",
+      "te": "వీడ్కోలు",
+      "es": "Adiós",
+      "fr": "Au revoir"
+    }
+  },
+  "GOODBYE": {
+    "display": "Goodbye",
+    "description": "Formal farewell with a waving hand (alias of BYE)",
+    "type": "phrase",
+    "video": "/assets/signs/GOODBYE/clip.gif",
+    "image": "/assets/signs/BYE/placeholder.svg",
+    "svg_animation": "wave",
+    "translations": {
+      "en": "Goodbye",
+      "hi": "अलविदा",
+      "te": "వీడ్కోలు",
+      "es": "Adiós",
+      "fr": "Au revoir"
+    }
+  },
+  "ALPHABET": {
+    "display": "Alphabet",
+    "description": "Generic A-Z fingerspelling fallback",
+    "type": "fallback",
+    "video": "/assets/signs/ALPHABET/clip.gif",
+    "image": "/assets/signs/ALPHABET/placeholder.svg",
+    "svg_animation": "generic",
+    "translations": {
+      "en": "Alphabet",
+      "hi": "वर्णमाला",
+      "te": "వర్ణమాల",
+      "es": "Alfabeto",
+      "fr": "Alphabet"
+    }
+  },
+  "UNKNOWN": {
+    "display": "Unknown",
+    "description": "Unrecognized sign fallback indicator",
+    "type": "fallback",
+    "video": "/assets/signs/UNKNOWN/clip.gif",
+    "image": "/assets/signs/UNKNOWN/placeholder.svg",
+    "svg_animation": "generic",
+    "translations": {
+      "en": "Unknown",
+      "hi": "अज्ञात",
+      "te": "తెలియదు",
+      "es": "Desconocido",
+      "fr": "Inconnu"
+    }
+  },
+  "A": {
+    "display": "A",
+    "description": "Letter A in fingerspelling",
+    "type": "letter",
+    "video": "/assets/signs/A/clip.gif",
+    "image": "/assets/signs/A/placeholder.svg",
+    "svg_animation": "fist",
+    "translations": {
+      "en": "A",
+      "hi": "ए",
+      "te": "ఎ",
+      "es": "A",
+      "fr": "A"
+    }
+  },
+  "B": {
+    "display": "B",
+    "description": "Letter B in fingerspelling",
+    "type": "letter",
+    "video": "/assets/signs/B/clip.gif",
+    "image": "/assets/signs/B/placeholder.svg",
+    "svg_animation": "palm",
+    "translations": {
+      "en": "B",
+      "hi": "बी",
+      "te": "బి",
+      "es": "B",
+      "fr": "B"
+    }
+  },
+  "C": {
+    "display": "C",
+    "description": "Letter C in fingerspelling",
+    "type": "letter",
+    "video": "/assets/signs/C/clip.gif",
+    "image": "/assets/signs/C/placeholder.svg",
+    "svg_animation": "generic",
+    "translations": {
+      "en": "C",
+      "hi": "सी",
+      "te": "సి",
+      "es": "C",
+      "fr": "C"
+    }
+  },
+  "LOVE": {
+    "display": "Love",
+    "description": "Crossed arms over heart gesture",
+    "type": "phrase",
+    "video": "/assets/signs/LOVE/clip.gif",
+    "image": "/assets/signs/LOVE/placeholder.svg",
+    "svg_animation": "fist",
+    "translations": {
+      "en": "Love",
+      "hi": "प्यार",
+      "te": "ప్రేమ",
+      "es": "Amor",
+      "fr": "Amour"
+    }
+  },
+  "HAPPY": {
+    "display": "Happy",
+    "description": "Smiling gesture brushing upward on chest",
+    "type": "phrase",
+    "video": "/assets/signs/HAPPY/clip.gif",
+    "image": "/assets/signs/HAPPY/placeholder.svg",
+    "svg_animation": "wave",
+    "translations": {
+      "en": "Happy",
+      "hi": "खुश",
+      "te": "సంతోషం",
+      "es": "Feliz",
+      "fr": "Heureux"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Sign Up — SilentLink{% endblock %}
+
+{% block content %}
+<section class="auth-section">
+    <div class="auth-card fade-up">
+        <div class="auth-header">
+            <span class="eyebrow">Get started</span>
+            <h1>Create your account</h1>
+            <p>Join SilentLink and start translating sign language instantly.</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error" style="color: var(--rose); background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 0.9rem;">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('signup') }}" class="auth-form">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Choose a username" required
+                    autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Create a password" required
+                    autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn-primary">Create Account →</button>
+        </form>
+
+        <p class="auth-footer">Already have an account? <a href="/login">Sign in</a></p>
+    </div>
+</section>
+{% endblock %}

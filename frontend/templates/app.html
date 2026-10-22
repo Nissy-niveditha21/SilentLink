@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% block title %}Translator — SilentLink{% endblock %}
+
+{% block content %}
+<section class="translator-page" aria-label="Sign language translator workspace">
+    <div class="translator-grid">
+
+        <div class="translator-panel">
+            <div class="panel-header fade-up">
+                <div class="live-badge" aria-live="polite"><span class="live-dot"></span><span
+                        id="connection-status">Connecting…</span></div>
+                <h1>Sign Language Translator</h1>
+                <p>Position your hand in the frame — each gesture is interpreted in real time.</p>
+            </div>
+
+            <div class="video-wrapper fade-up fade-up-1" role="region"
+                aria-label="Camera preview with hand landmark overlay">
+                <video id="camera-preview" autoplay playsinline muted aria-label="Live camera feed"></video>
+                <canvas id="landmark-canvas" aria-hidden="true"></canvas>
+                <div class="video-overlay">
+                    <span class="live-badge" id="camera-status-badge"><span class="live-dot"></span>Initializing
+                        camera…</span>
+                </div>
+            </div>
+
+            <div class="mode-switcher fade-up fade-up-2" role="tablist" aria-label="Recognition mode">
+                <button class="mode-btn" id="btn-COMMUNICATION" data-mode="COMMUNICATION" role="tab"
+                    aria-selected="true">
+                    💬 Communication
+                </button>
+                <button class="mode-btn" id="btn-CONTROL" data-mode="CONTROL" role="tab" aria-selected="false">
+                    🖱️ Cursor Control
+                </button>
+                <button class="mode-btn phrase-btn" id="btn-PHRASE" data-mode="PHRASE" role="tab" aria-selected="false">
+                    ✋ Phrases
+                </button>
+            </div>
+
+            <div class="controls-row fade-up fade-up-3" role="toolbar" aria-label="Sentence editing controls">
+                <a href="{{ url_for('logout') }}" class="btn-secondary" aria-label="Log out of SilentLink">← Logout</a>
+                <div class="control-group" role="group" aria-label="Edit controls">
+                    <button class="btn-ctrl" id="btn-undo" data-action="undo" aria-label="Undo last letter">⌫
+                        Undo</button>
+                    <button class="btn-ctrl" id="btn-space" data-action="space" aria-label="Insert space">⎵
+                        Space</button>
+                    <button class="btn-ctrl btn-ctrl-danger" id="btn-clear" data-action="clear"
+                        aria-label="Clear sentence">🗑 Clear</button>
+                </div>
+            </div>
+
+            <div class="sentence-box fade-up" aria-live="polite" aria-label="Recognized sentence">
+                <div class="sentence-label">Sentence</div>
+                <div class="sentence-text" id="sentence-display">&nbsp;</div>
+                <div class="sentence-word" id="word-display" aria-label="Current word being spelled">&nbsp;</div>
+            </div>
+
+            <!-- Prominent Cartoon Avatar Action Demonstration Box -->
+            <div id="avatar-clip-card" class="avatar-clip-card fade-up">
+                <div class="avatar-card-header">
+                    <h3><span class="card-icon">🎭</span> Cartoon Sign Avatar</h3>
+                    <span class="avatar-sign-name" id="avatar-sign-title">Sign: HELLO</span>
+                </div>
+                
+                <!-- Voice-to-GIF Converter Controls -->
+                <div class="voice-to-gif-bar">
+                    <button class="btn-voice-mic" id="btn-voice-input" title="Speak to generate GIF action">
+                        🎤 <span id="voice-btn-text">Speak to Sign</span>
+                    </button>
+                    <div class="voice-input-wrap">
+                        <input type="text" id="voice-text-input" placeholder="Type or speak a phrase (e.g. 'Hello', 'Thank You', 'Yes', 'Bye')..." aria-label="Phrase to GIF search">
+                        <button class="btn-primary" id="btn-voice-convert">Play GIF</button>
+                    </div>
+                </div>
+
+                <div class="avatar-stage">
+                    <img id="avatar-clip-img" class="avatar-gif" alt="Cartoon Sign Demonstration" src="/assets/signs/HELLO/clip.gif">
+                </div>
+            </div>
+
+
+            <div class="status-box fade-up" aria-live="polite">
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="status-label">Status</span>
+                        <span class="status-value" id="rec-status">idle</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Sign</span>
+                        <span class="status-value" id="rec-sign">—</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Confidence</span>
+                        <span class="status-value" id="rec-conf">0%</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Mode</span>
+                        <span class="status-value" id="mode-label">COMMUNICATION</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <aside class="translator-sidebar" aria-label="Translation results and phrase details">
+
+            <div id="phrase-box" class="sidebar-card phrase-box hidden fade-up" aria-live="polite">
+                <div class="phrase-box-header">
+                    <h2><span class="card-icon">💬</span> Detected Phrase</h2>
+                    <div class="sign-clip-wrap" aria-hidden="true">
+                        <img id="sign-clip-img" class="sign-clip" alt="" src="" loading="lazy"
+                            onerror="this.style.display='none'">
+                    </div>
+                </div>
+                <div class="phrase-display" id="translations-panel">
+                    <div class="phrase-lang-row" id="row-en">
+                        <span class="lang-flag" aria-hidden="true">🇬🇧</span>
+                        <span class="lang-label">English</span>
+                        <span class="phrase-text" id="phrase-en">—</span>
+                        <button class="phrase-speak-btn" id="speak-en" onclick="speakPhrase('en')"
+                            aria-label="Speak English">🔊</button>
+                    </div>
+                    <div class="phrase-lang-row" id="row-hi">
+                        <span class="lang-flag" aria-hidden="true">🇮🇳</span>
+                        <span class="lang-label">हिन्दी</span>
+                        <span class="phrase-text" id="phrase-hi">—</span>
+                        <button class="phrase-speak-btn" id="speak-hi" onclick="speakPhrase('hi')"
+                            aria-label="Speak Hindi">🔊</button>
+                    </div>
+                    <div class="phrase-lang-row" id="row-te">
+                        <span class="lang-flag" aria-hidden="true">🇮🇳</span>
+                        <span class="lang-label">తెలుగు</span>
+                        <span class="phrase-text" id="phrase-te">—</span>
+                        <button class="phrase-speak-btn" id="speak-te" onclick="speakPhrase('te')"
+                            aria-label="Speak Telugu">🔊</button>
+                    </div>
+                    <div class="phrase-lang-row" id="row-es">
+                        <span class="lang-flag" aria-hidden="true">🇪🇸</span>
+                        <span class="lang-label">Español</span>
+                        <span class="phrase-text" id="phrase-es">—</span>
+                        <button class="phrase-speak-btn" id="speak-es" onclick="speakPhrase('es')"
+                            aria-label="Speak Spanish">🔊</button>
+                    </div>
+                    <div class="phrase-lang-row" id="row-fr">
+                        <span class="lang-flag" aria-hidden="true">🇫🇷</span>
+                        <span class="lang-label">Français</span>
+                        <span class="phrase-text" id="phrase-fr">—</span>
+                        <button class="phrase-speak-btn" id="speak-fr" onclick="speakPhrase('fr')"
+                            aria-label="Speak French">🔊</button>
+                    </div>
+                </div>
+
+                <div class="gesture-guide">
+                    <h3>Gesture Reference</h3>
+                    <div class="gesture-list" role="list">
+                        <div class="gesture-item" role="listitem">
+                            <span class="gesture-emoji" aria-hidden="true">🤙</span>
+                            <span>Pinky only</span>
+                            <span class="gesture-arrow">→</span>
+                            <span class="gesture-label">Hi</span>
+                        </div>
+                        <div class="gesture-item" role="listitem">
+                            <span class="gesture-emoji" aria-hidden="true">🤘</span>
+                            <span>Index + Pinky</span>
+                            <span class="gesture-arrow">→</span>
+                            <span class="gesture-label">Bye</span>
+                        </div>
+                        <div class="gesture-item" role="listitem">
+                            <span class="gesture-emoji" aria-hidden="true">🖐️</span>
+                            <span>Open palm</span>
+                            <span class="gesture-arrow">→</span>
+                            <span class="gesture-label">Thank You</span>
+                        </div>
+                        <div class="gesture-item" role="listitem">
+                            <span class="gesture-emoji" aria-hidden="true">👍</span>
+                            <span>Thumb only</span>
+                            <span class="gesture-arrow">→</span>
+                            <span class="gesture-label">Yes / Sorry</span>
+                        </div>
+                        <div class="gesture-item" role="listitem">
+                            <span class="gesture-emoji" aria-hidden="true">💍</span>
+                            <span>Ring only</span>
+                            <span class="gesture-arrow">→</span>
+                            <span class="gesture-label">Please</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="default-info">
+                <div class="sidebar-card fade-up fade-up-1">
+                    <h2><span class="card-icon">⚙️</span> How It Works</h2>
+                    <p>MediaPipe Hands tracks 21 hand landmarks locally in your browser. The normalized landmark vector
+                        is sent to the SilentLink backend over WebSocket, which runs the recognizer pipeline (phrase
+                        rules → MLP alphabet), builds the sentence, and translates to five languages.</p>
+                </div>
+
+                <div class="sidebar-card fade-up fade-up-2">
+                    <h2><span class="card-icon">✅</span> Best Results</h2>
+                    <ul>
+                        <li>Keep your hand centered in frame</li>
+                        <li>Use a plain, well-lit background</li>
+                        <li>Hold each sign steady for ~0.5s</li>
+                        <li>One hand at a time</li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-card fade-up fade-up-3">
+                    <h2><span class="card-icon">🚀</span> Cursor Control Mode</h2>
+                    <ul>
+                        <li>Index tip position → cursor position</li>
+                        <li>Index+Thumb pinch → left click</li>
+                        <li>Index+Middle + vertical drag → scroll</li>
+                        <li>1/3/4 fingers up → launch apps</li>
+                    </ul>
+                </div>
+            </div>
+
+        </aside>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
+<script crossorigin="anonymous"
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+<script crossorigin="anonymous"
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js"></script>
+{% endblock %}

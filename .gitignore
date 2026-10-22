@@ -23,3 +23,13 @@ veenv/
 *.pyd
 *.dll
 *.h5
+
+# SilentLink specific
+.env
+*.sqlite3
+data/*.db
+instance/
+temp_audio/
+__pycache__/
+.pytest_cache
+run.ps1.local

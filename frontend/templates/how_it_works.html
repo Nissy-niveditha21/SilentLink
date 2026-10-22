@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}How It Works — SilentLink{% endblock %}
+
+{% block content %}
+<section class="how-page" aria-label="How SilentLink works">
+    <div class="about-hero fade-up">
+        <span class="eyebrow">Inside the Pipeline</span>
+        <h1>How SilentLink understands your hands</h1>
+        <p>From a live webcam frame to a translated, spoken sentence in five languages — every step runs locally on your machine, without sending raw video off-device.</p>
+    </div>
+
+    <ol class="step-grid" aria-label="Recognition pipeline steps">
+        <li class="step-card fade-up fade-up-1">
+            <div class="step-num">1</div>
+            <div class="step-icon">📷</div>
+            <h3>Camera Capture</h3>
+            <p>The browser requests webcam access via <code>getUserMedia</code> and renders frames into a hidden <code>&lt;video&gt;</code> element. No frames leave the browser — everything is processed client-side.</p>
+        </li>
+        <li class="step-card fade-up fade-up-2">
+            <div class="step-num">2</div>
+            <div class="step-icon">✋</div>
+            <h3>MediaPipe Hands</h3>
+            <p>Google's MediaPipe Hands WASM module detects 21 3D landmarks per hand at ~30 fps. The canvas overlay draws the detected skeleton so you can confirm tracking quality.</p>
+        </li>
+        <li class="step-card fade-up fade-up-3">
+            <div class="step-num">3</div>
+            <div class="step-icon">🔗</div>
+            <h3>WebSocket Stream</h3>
+            <p>Only the 21×(x,y,z) landmark floats are transmitted — not video frames. The socket uses automatic reconnect with exponential backoff if you briefly lose network.</p>
+        </li>
+        <li class="step-card fade-up fade-up-4">
+            <div class="step-num">4</div>
+            <div class="step-icon">🧠</div>
+            <h3>Recognition Engine</h3>
+            <p>The backend runs a two-stage recognizer: 25 deterministic phrase rules first, then a pure-NumPy MLP trained on the ASL alphabet for fingerspelled letters.</p>
+        </li>
+        <li class="step-card fade-up fade-up-1">
+            <div class="step-num">5</div>
+            <div class="step-icon">⏳</div>
+            <h3>Temporal Stabilizer</h3>
+            <p>A PredictionStabilizer + hold counter + word timeout debounce raw per-frame noise into coherent words and sentences, mirroring how human signers naturally pause.</p>
+        </li>
+        <li class="step-card fade-up fade-up-2">
+            <div class="step-num">6</div>
+            <div class="step-icon">🌐</div>
+            <h3>5-Language Translation</h3>
+            <p>Phrase signs pull pre-translated strings from the assets dictionary (English, Hindi, Telugu, Spanish, French). Fingerspelled words fall back to English with fingerspell markers.</p>
+        </li>
+        <li class="step-card fade-up fade-up-3">
+            <div class="step-num">7</div>
+            <div class="step-icon">🔊</div>
+            <h3>Speech &amp; History</h3>
+            <p>Click any speak button to hear the phrase through the browser's built-in Web Speech API. Sentences are stored locally in your history for review.</p>
+        </li>
+        <li class="step-card fade-up fade-up-4">
+            <div class="step-num">8</div>
+            <div class="step-icon">🖱️</div>
+            <h3>Computer Control (opt-in)</h3>
+            <p>Switch to Cursor Control mode to move your mouse with the index tip, click by pinching, scroll with two fingers, and launch apps — all gated behind an explicit mode toggle.</p>
+        </li>
+    </ol>
+</section>
+{% endblock %}

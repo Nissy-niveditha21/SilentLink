@@ -1,0 +1,1 @@
+All placeholder SVG hand diagrams created by the SilentLink project team, 2026. Licensed CC0 1.0 Universal (public domain). No third-party copyrighted media is bundled. Real demonstration videos may be added by contributors under assets/signs/<key>/demo.mp4 provided their license is compatible.

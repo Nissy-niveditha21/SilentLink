@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}History — SilentLink{% endblock %}
+
+{% block content %}
+<section class="history-page" aria-label="Sentence history page">
+    <div class="history-header fade-up">
+        <span class="eyebrow">Your Sessions</span>
+        <h1>Translation History</h1>
+        <p>Recent sentences recognized during your sign language sessions.</p>
+    </div>
+
+    <div class="history-toolbar fade-up fade-up-1" role="toolbar" aria-label="History controls">
+        <div class="search-field" role="search">
+            <label for="history-search" class="sr-only">Search history</label>
+            <input type="search" id="history-search" placeholder="Search past sentences…" aria-label="Search history entries">
+        </div>
+        <button class="btn-secondary" id="btn-clear-history" aria-label="Clear all history entries">Clear History</button>
+    </div>
+
+    <div class="history-list fade-up fade-up-2" id="history-list" role="list" aria-live="polite">
+        <div class="history-empty">
+            <div class="empty-icon">📝</div>
+            <h2>No sentences yet</h2>
+            <p>Once you start using the translator, recognized sentences will appear here. You can revisit, search, or clear them anytime.</p>
+            <a href="/app" class="btn-primary">Open Translator →</a>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const KEY = 'silentlink:history';
+    const listEl = document.getElementById('history-list');
+    const searchEl = document.getElementById('history-search');
+    const clearBtn = document.getElementById('btn-clear-history');
+
+    function load() {
+        try { return JSON.parse(localStorage.getItem(KEY) || '[]'); }
+        catch { return []; }
+    }
+
+    function save(arr) {
+        localStorage.setItem(KEY, JSON.stringify(arr.slice(0, 200)));
+    }
+
+    function escapeHtml(s) {
+        return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function render(filter='') {
+        const items = load();
+        const f = filter.trim().toLowerCase();
+        const filtered = f ? items.filter(i => (i.text || '').toLowerCase().includes(f)) : items;
+
+        if (filtered.length === 0) {
+            listEl.innerHTML = `<div class="history-empty"><div class="empty-icon">📝</div><h2>${f ? 'No matches' : 'No sentences yet'}</h2><p>${f ? 'Try a different search term.' : 'Start using the translator and sentences will appear here.'}</p>${f ? '' : '<a href="/app" class="btn-primary">Open Translator →</a>'}</div>`;
+            return;
+        }
+
+        listEl.innerHTML = filtered.slice().reverse().map(item => {
+            const d = new Date(item.ts || Date.now());
+            const when = d.toLocaleString();
+            const langs = item.languages || {};
+            const langChips = Object.entries(langs).filter(([_, v]) => v).map(([lang, val]) =>
+                `<span class="lang-chip" lang="${lang}"><span class="chip-code">${lang.toUpperCase()}</span> ${escapeHtml(String(val))}</span>`
+            ).join('');
+            return `<article class="history-item fade-up" role="listitem"><div class="history-item-head"><time class="history-time" datetime="${d.toISOString()}">${when}</time><span class="history-mode">${escapeHtml(item.mode || 'COMMUNICATION')}</span></div><div class="history-sentence" lang="en">${escapeHtml(item.text || '')}</div>${langChips ? `<div class="history-langs">${langChips}</div>` : ''}</article>`;
+        }).join('');
+    }
+
+    searchEl.addEventListener('input', e => render(e.target.value));
+    clearBtn.addEventListener('click', () => { if (confirm('Clear all saved history?')) { save([]); render(searchEl.value); } });
+
+    window.addEventListener('storage', () => render(searchEl.value));
+    render();
+})();
+</script>
+{% endblock %}

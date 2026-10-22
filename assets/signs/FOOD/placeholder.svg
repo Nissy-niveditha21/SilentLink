@@ -1,0 +1,12 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <g stroke="#00E5FF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 150 C 62 125, 78 110, 100 108 C 122 110, 138 125, 140 150"/>
+    <path d="M65 125 C 72 118, 88 116, 100 118"/>
+    <path d="M100 118 C 114 116, 130 118, 135 125"/>
+    <path d="M70 140 L 82 132 L 90 142"/>
+    <path d="M102 142 L 110 132 L 122 140"/>
+    <path d="M60 150 C 55 158, 60 168, 80 170 L 120 170 C 140 168, 145 158, 140 150"/>
+    <ellipse cx="100" cy="92" rx="32" ry="14"/>
+    <circle cx="100" cy="130" r="5" stroke="#7C4DFF"/>
+  </g>
+</svg>
