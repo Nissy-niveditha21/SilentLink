@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SilentLink{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}SilentLink — AI-powered real-time sign language recognition and translation platform.{% endblock %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -17,11 +18,19 @@
 
         <header class="navbar">
             <a href="/" class="logo">SilentLink<span class="logo-dot"></span></a>
-            <nav class="nav-links">
+            <nav class="nav-links" aria-label="Main navigation">
                 <a href="/">Home</a>
                 <a href="/about">About</a>
-                <a href="/login">Login</a>
-                <a href="/signup" class="btn-primary">Get Started</a>
+                <a href="/how-it-works">How It Works</a>
+                {% if current_user %}
+                    <a href="/history">History</a>
+                    <a href="/settings">Settings</a>
+                    <a href="/app" class="btn-primary">Open App</a>
+                    <a href="/logout" class="btn-secondary" style="padding: 8px 16px;">Logout</a>
+                {% else %}
+                    <a href="/login">Login</a>
+                    <a href="/signup" class="btn-primary">Get Started</a>
+                {% endif %}
             </nav>
         </header>
 
@@ -34,7 +43,13 @@
             <div class="footer-links">
                 <a href="/">Home</a>
                 <a href="/about">About</a>
-                <a href="/login">Login</a>
+                <a href="/how-it-works">How It Works</a>
+                {% if current_user %}
+                    <a href="/app">Translator</a>
+                    <a href="/logout">Logout</a>
+                {% else %}
+                    <a href="/login">Login</a>
+                {% endif %}
             </div>
         </footer>
 

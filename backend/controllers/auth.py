@@ -51,11 +51,16 @@ def get_current_user(request: Request) -> Optional[str]:
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_form(request: Request):
+    user = get_current_user(request)
+    if user:
+        from fastapi.responses import RedirectResponse as _RR
+        return _RR(url="/app", status_code=303)
     return templates.TemplateResponse(
         request=request,
         name="login.html",
         context={
             "request": request,
+            "current_user": None,
         },
     )
 
@@ -84,6 +89,7 @@ async def login_submit(
             context={
                 "request": request,
                 "error": "Invalid username or password",
+                "current_user": None,
             },
             status_code=401,
         )
@@ -102,6 +108,7 @@ async def login_submit(
         max_age=86400 * 7,
         httponly=True,
         samesite="lax",
+        secure=settings.SESSION_COOKIE_SECURE,
     )
 
     return response
@@ -113,12 +120,17 @@ async def login_submit(
 
 @router.get("/signup", response_class=HTMLResponse)
 async def signup_form(request: Request):
+    user = get_current_user(request)
+    if user:
+        from fastapi.responses import RedirectResponse as _RR
+        return _RR(url="/app", status_code=303)
     return templates.TemplateResponse(
         request=request,
         name="signup.html",
         context={
             "request": request,
             "error": None,
+            "current_user": None,
         },
     )
 
@@ -145,6 +157,7 @@ async def signup_submit(
             context={
                 "request": request,
                 "error": "Username already taken",
+                "current_user": None,
             },
             status_code=400,
         )
@@ -201,5 +214,6 @@ async def app_page(request: Request):
         context={
             "request": request,
             "username": user,
+            "current_user": user,
         },
     )

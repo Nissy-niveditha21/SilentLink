@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     HOST: str = "127.0.0.1"
     PORT: int = 8000
     SESSION_COOKIE_NAME: str = "silentlink_session"
+    SESSION_COOKIE_SECURE: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

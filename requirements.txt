@@ -8,13 +8,7 @@ python-dotenv
 itsdangerous
 SQLAlchemy
 werkzeug
-opencv-python==4.8.1.78
-opencv-contrib-python==4.8.1.78
-mediapipe==0.10.14
-numpy==1.26.4
-matplotlib==3.7.5
-pillow==10.4.0
-pyautogui
-scikit-learn
+numpy>=1.24
+pillow>=9.0
 Jinja2
-pyttsx3
+psycopg[binary]>=3.2,<4

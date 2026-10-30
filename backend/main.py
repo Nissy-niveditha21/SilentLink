@@ -196,9 +196,10 @@ async def phrase_status_api():
         sb = getattr(temporal, "builder", None)
         current_sentence = sb.sentence if sb is not None else ""
         current_word = getattr(sb, "current_word", "") or ""
-        status = getattr(temporal, "_last_status", "idle") or "idle"
+        # _last_status is derived from the last step() call — fall back gracefully
         last_sign = getattr(temporal, "_last_sign", None)
         last_conf = getattr(temporal, "_last_confidence", None)
+        status = "confirmed" if last_sign else "idle"
     else:
         current_sentence = ""
         current_word = ""
@@ -258,13 +259,16 @@ async def on_startup():
     init_db()
 
     app.state.static_recognizer = StaticSignRecognizer()
-    app.state.dynamic_recognizer = DynamicSignRecognizer(max_seq_len=30)
+    app.state.dynamic_recognizer = DynamicSignRecognizer(
+        max_seq_len=30,
+        model_path=os.path.join("models", "dynamic_sign_lstm.json"),
+    )
     app.state.temporal_processor = TemporalProcessor()
     app.state.features_to_63_fn = landmarks_to_features
 
     try:
         app.state.asset_resolver = AssetResolver()
-        if app.state.asset_resolver.gif_agent:
+        if app.state.asset_resolver.gif_agent and not os.environ.get("VERCEL"):
             app.state.asset_resolver.gif_agent.ensure_all_gifs()
     except Exception as e:
         log.error("AssetResolver init failed: %s", e)
@@ -292,6 +296,9 @@ async def on_startup():
     print("\033[92mSilentLink v2.1 starting…\033[0m")
     print(
         f"  StaticSignRecognizer: {'loaded' if app.state.static_recognizer.mlp is not None else 'rules-only (no MLP weights)'}"
+    )
+    print(
+        f"  DynamicSignRecognizer: {'loaded' if app.state.dynamic_recognizer.model is not None else 'not trained'}"
     )
     print(
         f"  AssetResolver: {'loaded' if app.state.asset_resolver is not None else 'unavailable'}"

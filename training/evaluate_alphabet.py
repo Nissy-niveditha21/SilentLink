@@ -47,6 +47,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="models/alphabet_mlp.json")
     parser.add_argument("--data", default="data/asl_landmarks.npz")
+    parser.add_argument("--test-data", default=None, help="Optional extracted test landmark .npz.")
     parser.add_argument("--val", type=float, default=0.15)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
@@ -54,55 +55,87 @@ def main():
     with open(args.model, "r", encoding="utf-8") as f:
         payload = json.load(f)
     npz = np.load(args.data, allow_pickle=True)
-    X = npz["X"].astype(np.float64)
-    y = npz["y"].astype(np.int64)
     class_names = [str(c) for c in npz["class_names"]]
+    split_name = "validation"
+    if args.test_data:
+        test_npz = np.load(args.test_data, allow_pickle=True)
+        if "X_test" in test_npz and "y_test" in test_npz:
+            X_eval = test_npz["X_test"].astype(np.float64)
+            y_eval = test_npz["y_test"].astype(np.int64)
+        else:
+            X_eval = test_npz["X"].astype(np.float64)
+            y_eval = test_npz["y"].astype(np.int64)
+        eval_classes = [str(c) for c in test_npz["class_names"]]
+        split_name = "test"
+    elif "X_test" in npz and "y_test" in npz:
+        X_eval = npz["X_test"].astype(np.float64)
+        y_eval = npz["y_test"].astype(np.int64)
+        eval_classes = class_names
+        split_name = "test"
+    else:
+        X = npz["X"].astype(np.float64)
+        y = npz["y"].astype(np.int64)
+        from sklearn.model_selection import StratifiedKFold
+        skf = StratifiedKFold(n_splits=int(1.0 / args.val), shuffle=True, random_state=args.seed)
+        _tr_idx, va_idx = next(skf.split(X, y))
+        X_eval = X[va_idx]
+        y_eval = y[va_idx]
+        eval_classes = class_names
 
-    from sklearn.model_selection import StratifiedKFold
-    skf = StratifiedKFold(n_splits=int(1.0 / args.val), shuffle=True, random_state=args.seed)
-    tr_idx, va_idx = next(skf.split(X, y))
+    model_classes = [str(c) for c in payload["classes"]]
+    model_index = {name: index for index, name in enumerate(model_classes)}
+    valid_indices = [
+        index for index, label in enumerate(y_eval)
+        if eval_classes[int(label)] in model_index
+    ]
+    if not valid_indices:
+        raise SystemExit("No evaluation samples match the classes present in the model.")
+    X_eval = X_eval[valid_indices]
+    truth = np.asarray(
+        [model_index[eval_classes[int(y_eval[index])]] for index in valid_indices],
+        dtype=np.int64,
+    )
 
     t0 = time.time()
-    proba = forward(X[va_idx], payload)
+    proba = forward(X_eval, payload)
     elapsed = time.time() - t0
     pred = proba.argmax(axis=1)
-    truth = y[va_idx]
 
     acc = float((pred == truth).mean())
     confidences = proba.max(axis=1)
 
     per = {}
-    for c in range(len(class_names)):
+    for c in range(len(model_classes)):
         mask = truth == c
         if mask.sum() == 0:
-            per[class_names[c]] = {"n": 0, "precision": None, "recall": None}
+            per[model_classes[c]] = {"n": 0, "precision": None, "recall": None}
             continue
         tp = int(((pred == c) & mask).sum())
         fp = int(((pred == c) & ~mask).sum())
         fn = int(mask.sum() - tp)
-        per[class_names[c]] = {
+        per[model_classes[c]] = {
             "n": int(mask.sum()),
             "precision": round(tp / (tp + fp), 4) if (tp + fp) else 0.0,
             "recall": round(tp / (tp + fn), 4) if (tp + fn) else 0.0,
         }
 
-    cm = np.zeros((len(class_names), len(class_names)), dtype=int)
+    cm = np.zeros((len(model_classes), len(model_classes)), dtype=int)
     for t, p in zip(truth, pred):
         cm[t, p] += 1
     confusions = []
-    for t in range(len(class_names)):
-        for p in range(len(class_names)):
+    for t in range(len(model_classes)):
+        for p in range(len(model_classes)):
             if t != p and cm[t, p] > 0:
-                confusions.append((int(cm[t, p]), class_names[t], class_names[p]))
+                confusions.append((int(cm[t, p]), model_classes[t], model_classes[p]))
     confusions.sort(reverse=True)
 
     print("=" * 60)
     print("Alphabet model evaluation (pure-NumPy runtime forward path)")
     print("=" * 60)
-    print(f"Validation samples : {len(truth)}")
-    print(f"Held-out accuracy  : {acc * 100:.2f}%")
+    print(f"{split_name.title()} samples   : {len(truth)}")
+    print(f"{split_name.title()} accuracy  : {acc * 100:.2f}%")
     print(f"Mean confidence    : {confidences.mean() * 100:.2f}%")
-    print(f"Inference (val set): {elapsed:.1f}s")
+    print(f"Inference ({split_name} set): {elapsed:.1f}s")
     print("-" * 60)
     print("Per-class (n / precision / recall):")
     for k, v in per.items():
@@ -114,7 +147,8 @@ def main():
     print("-" * 60)
 
     payload["evaluation"] = {
-        "held_out_val_fraction": args.val,
+        "split": split_name,
+        "held_out_val_fraction": args.val if split_name == "validation" else None,
         "seed": args.seed,
         "samples": int(len(truth)),
         "accuracy": round(acc, 4),

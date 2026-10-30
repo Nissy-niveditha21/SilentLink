@@ -38,22 +38,31 @@ import time
 
 import cv2
 import numpy as np
-import mediapipe as mp
 
 
 def main():
     parser = argparse.ArgumentParser(description="Extract normalized hand landmarks from ASL alphabet images.")
     parser.add_argument("--data", default="data/asl_alphabet_train", help="Root of per-class image folders.")
+    parser.add_argument("--test-data", default=None, help="Optional test folder (class folders or files named A_test.jpg).")
     parser.add_argument("--out", default="data/asl_landmarks.npz", help="Output .npz path.")
     parser.add_argument("--samples", type=int, default=400, help="Max images used per class.")
     parser.add_argument("--pad", type=int, default=40, help="Bounding-box padding in px (unused here, kept for parity).")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
+    if args.samples < 1:
+        parser.error("--samples must be positive")
     rng = np.random.default_rng(args.seed)
 
     if not os.path.isdir(args.data):
         raise SystemExit(f"Dataset folder not found: {args.data!r}")
+
+    try:
+        import mediapipe as mp
+    except ImportError as error:
+        raise SystemExit(
+            "MediaPipe is required to extract alphabet landmarks. Install requirements.txt first."
+        ) from error
 
     class_names = sorted(os.listdir(args.data))
     class_names = [c for c in class_names if os.path.isdir(os.path.join(args.data, c))]
@@ -69,6 +78,8 @@ def main():
 
     features_list = []
     labels_list = []
+    test_features = []
+    test_labels = []
 
     t_start = time.time()
     total_imgs = 0
@@ -77,10 +88,15 @@ def main():
 
     for ci, cls in enumerate(class_names):
         cls_dir = os.path.join(args.data, cls)
-        files = sorted(
+        all_files = sorted(
             f for f in os.listdir(cls_dir)
             if f.lower().endswith((".jpg", ".jpeg", ".png"))
-        )[: args.samples]
+        )
+        if len(all_files) > args.samples:
+            selected = rng.choice(len(all_files), size=args.samples, replace=False)
+            files = [all_files[index] for index in sorted(selected)]
+        else:
+            files = all_files
 
         ok = 0
         for fname in files:
@@ -110,22 +126,68 @@ def main():
         per_class[cls] = ok
         print(f"[{time.time() - t_start:6.1f}s] {cls}: {ok}/{len(files)} images with a detected hand")
 
+    if args.test_data:
+        if not os.path.isdir(args.test_data):
+            hands.close()
+            raise SystemExit(f"Test dataset folder not found: {args.test_data!r}")
+
+        class_indices = {name.upper(): index for index, name in enumerate(class_names)}
+        test_images = []
+        for entry in sorted(os.listdir(args.test_data)):
+            entry_path = os.path.join(args.test_data, entry)
+            if os.path.isdir(entry_path):
+                label = entry.upper()
+                files = sorted(
+                    filename for filename in os.listdir(entry_path)
+                    if filename.lower().endswith((".jpg", ".jpeg", ".png"))
+                )
+                test_images.extend((os.path.join(entry_path, filename), label) for filename in files)
+            elif entry.lower().endswith((".jpg", ".jpeg", ".png")):
+                label = os.path.splitext(entry)[0].split("_")[0].upper()
+                test_images.append((entry_path, label))
+
+        for path, label in test_images:
+            if label not in class_indices:
+                continue
+            image = cv2.imread(path)
+            if image is None:
+                continue
+            result = hands.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+            if not result.multi_hand_landmarks:
+                continue
+            points = np.array(
+                [[point.x, point.y, point.z] for point in result.multi_hand_landmarks[0].landmark],
+                dtype=np.float32,
+            )
+            origin = points[0]
+            scale = np.linalg.norm(points[9] - origin) + 1e-6
+            test_features.append(((points - origin) / scale).reshape(-1))
+            test_labels.append(class_indices[label])
+
     hands.close()
 
     if not features_list:
         raise SystemExit("No landmarks were extracted — nothing to train on.")
+    if args.test_data and not test_features:
+        raise SystemExit(
+            "No test landmarks were extracted. Check the test labels and hand visibility."
+        )
 
     X = np.asarray(features_list, dtype=np.float32)
     y = np.asarray(labels_list, dtype=np.int64)
 
     out_dir = os.path.dirname(os.path.abspath(args.out))
     os.makedirs(out_dir, exist_ok=True)
-    np.savez_compressed(
-        args.out,
-        X=X,
-        y=y,
-        class_names=np.asarray(class_names, dtype=object),
-    )
+    payload = {
+        "X": X,
+        "y": y,
+        "class_names": np.asarray(class_names, dtype=object),
+    }
+    if test_features:
+        payload["X_test"] = np.asarray(test_features, dtype=np.float32)
+        payload["y_test"] = np.asarray(test_labels, dtype=np.int64)
+        print(f"Extracted {len(test_features)} test samples with detected hands.")
+    np.savez_compressed(args.out, **payload)
 
     print("-" * 60)
     print(f"Extracted {len(features_list)} landmark samples from {total_imgs} images")

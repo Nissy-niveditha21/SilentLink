@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "backend/main.py": {
+      "includeFiles": [
+        "frontend/templates/**",
+        "frontend/static/**",
+        "assets/**",
+        "models/**"
+      ],
+      "excludeFiles": "{data/**,dataset/**,training/**,tests/**,veenv/**,venv/**,legacy/**,blender/**,core/**,ui/**,scripts/**,.trae/**,.vscode/**,*.h5,*.docx,**/__pycache__/**,**/*.pyc,models/README.md}"
+    }
+  }
+}

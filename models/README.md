@@ -29,15 +29,15 @@ the evaluator (or `null` if evaluation has not been run yet).
 
 ## dynamic_sign_lstm.json — Dynamic-Sign BiLSTM
 
-The file `dynamic_sign_lstm.json` is the future output of
+The file `dynamic_sign_lstm.json` is produced by
 `training/train_dynamic_signs.py`. It represents a stacked bidirectional LSTM
 followed by a linear classifier that maps a sequence of 63-dimensional
 landmark vectors (one frame per timestep) to one of N dynamic sign classes such
 as whole ASL words or phrases. The architecture is intentionally small and
 runs comfortably on a laptop GPU or CPU. To plug the trained file into the
 `DynamicSignRecognizer` at runtime, the module loads the JSON, rebuilds the
-layer order from the saved `layers` list, and implements a hand-rolled NumPy
-forward pass (sigmoid/tanh gates for each LSTM cell, concatenated
+layer order from the saved `layers` list, and implements a NumPy forward pass
+(sigmoid/tanh gates for each LSTM cell, concatenated
 bidirectional outputs, then the final linear projection). The recognizer
 expects the same `seq_len` and class ordering that were used at training time,
 so both are stored directly in the JSON rather than re-derived. The backend

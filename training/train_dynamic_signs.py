@@ -52,10 +52,7 @@ def _load_classes_txt(path):
 
 
 def _load_seq_dataset(seq_dataset, seq_len, classes_filter=None):
-    """Scan `seq_dataset/sequences/<sign>/sample_XXXX.npy`, pad/trim to seq_len.
-
-    Returns (X, y, class_names) where X has shape (N, seq_len, 63).
-    """
+    """Load legacy sequences or sequences grouped by official train/val/test splits."""
     sequences_root = os.path.join(seq_dataset, "sequences")
     if not os.path.isdir(sequences_root):
         raise RuntimeError(
@@ -75,15 +72,28 @@ def _load_seq_dataset(seq_dataset, seq_len, classes_filter=None):
 
     X_list = []
     y_list = []
+    split_list = []
 
     for ci, sign in enumerate(sign_names):
         sign_dir = os.path.join(sequences_root, sign)
-        samples = sorted(
-            f for f in os.listdir(sign_dir)
-            if f.lower().endswith(".npy")
-        )
-        for fname in samples:
-            fpath = os.path.join(sign_dir, fname)
+        split_dirs = [
+            split for split in ("train", "val", "test")
+            if os.path.isdir(os.path.join(sign_dir, split))
+        ]
+        if split_dirs:
+            samples = [
+                (split, os.path.join(sign_dir, split, fname))
+                for split in split_dirs
+                for fname in sorted(os.listdir(os.path.join(sign_dir, split)))
+                if fname.lower().endswith(".npy")
+            ]
+        else:
+            samples = [
+                ("", os.path.join(sign_dir, fname))
+                for fname in sorted(os.listdir(sign_dir))
+                if fname.lower().endswith(".npy")
+            ]
+        for split, fpath in samples:
             try:
                 arr = np.load(fpath)
             except Exception as e:
@@ -107,6 +117,7 @@ def _load_seq_dataset(seq_dataset, seq_len, classes_filter=None):
 
             X_list.append(arr.astype(np.float32))
             y_list.append(ci)
+            split_list.append(split)
 
     if not X_list:
         raise RuntimeError(
@@ -116,7 +127,7 @@ def _load_seq_dataset(seq_dataset, seq_len, classes_filter=None):
 
     X = np.stack(X_list, axis=0)
     y = np.asarray(y_list, dtype=np.int64)
-    return X, y, sign_names
+    return X, y, sign_names, np.asarray(split_list)
 
 
 def main():
@@ -168,23 +179,46 @@ def main():
     if args.classes is not None:
         classes_filter = _load_classes_txt(args.classes)
 
-    X, y, class_names = _load_seq_dataset(args.seq_dataset, args.seq_len, classes_filter)
+    X, y, class_names, splits = _load_seq_dataset(args.seq_dataset, args.seq_len, classes_filter)
+    has_official_splits = np.any(splits != "")
+    official_split = np.any(splits == "train") and np.any(splits == "val")
+    if has_official_splits and not official_split:
+        raise RuntimeError("Official datasets must contain both train and validation samples.")
+    if np.any(splits == "train"):
+        train_mask = splits == "train"
+        keep = [ci for ci in range(len(class_names)) if np.any((y == ci) & train_mask)]
+        if not keep:
+            raise RuntimeError("The dataset has no samples in its official train split.")
+        remap = {old: new for new, old in enumerate(keep)}
+        selected = np.isin(y, keep)
+        X = X[selected]
+        splits = splits[selected]
+        y = np.asarray([remap[int(label)] for label in y[selected]], dtype=np.int64)
+        class_names = [class_names[index] for index in keep]
     n_classes = len(class_names)
     print(f"Loaded {X.shape[0]} sequences of shape {X.shape[1:]} -> {n_classes} classes: {class_names}")
 
-    try:
-        from sklearn.model_selection import train_test_split
-        X_tr, X_va, y_tr, y_va = train_test_split(
-            X, y, test_size=args.val, random_state=args.seed, stratify=y
-        )
-    except Exception:
-        rng = np.random.default_rng(args.seed)
-        idx = rng.permutation(len(X))
-        n_va = max(1, int(len(X) * args.val))
-        va_idx = idx[:n_va]
-        tr_idx = idx[n_va:]
-        X_tr, X_va = X[tr_idx], X[va_idx]
-        y_tr, y_va = y[tr_idx], y[va_idx]
+    if official_split:
+        train_mask = splits == "train"
+        val_mask = splits == "val"
+        X_tr, y_tr = X[train_mask], y[train_mask]
+        X_va, y_va = X[val_mask], y[val_mask]
+        if not len(X_tr) or not len(X_va):
+            raise RuntimeError("Official train and validation splits must both contain samples.")
+    else:
+        try:
+            from sklearn.model_selection import train_test_split
+            X_tr, X_va, y_tr, y_va = train_test_split(
+                X, y, test_size=args.val, random_state=args.seed, stratify=y
+            )
+        except ValueError as split_err:
+            raise RuntimeError(
+                "Could not create a stratified validation split. Add more samples per class "
+                "or provide official train/val split folders."
+            ) from split_err
+
+    if len(set(y_tr.tolist())) < 2:
+        raise RuntimeError("Training requires at least two classes with train samples.")
 
     print(f"Train: {len(y_tr)} | Validate: {len(y_va)}")
 
@@ -282,6 +316,7 @@ def main():
         "best_val_acc": round(best_val_acc, 6),
         "train_time_s": round(train_time, 2),
         "epochs_trained": args.epochs,
+        "split_source": "official WLASL train/val/test" if official_split else "random train/validation split",
         "layers": layers_json,
     }
 

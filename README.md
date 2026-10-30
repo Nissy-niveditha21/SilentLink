@@ -52,6 +52,40 @@ python run.py                         # or: uvicorn backend.main:app --reload
 
 Then open **http://127.0.0.1:8000** in a Chromium-based browser, sign up/in, and allow the camera.
 
+## Deploy to Render
+
+The included [`render.yaml`](./render.yaml) Blueprint runs the FastAPI app with Uvicorn and mounts a 1 GB persistent disk for the SQLite user database. This configuration uses Render's paid Starter service; a persistent disk is not available on the free web-service plan.
+
+1. Push this repository to GitHub. In Render, choose **New → Blueprint**, connect the repository, and select the branch to deploy.
+2. Review the Blueprint before creating the service. Confirm the service plan and persistent-disk cost for your account/region.
+3. Render reads `render.yaml`, installs `requirements.txt`, starts `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`, and checks `/health`. The Blueprint generates `SECRET_KEY`, sets `SESSION_COOKIE_SECURE=true`, and stores SQLite at `/var/data/silentlink.db`.
+4. Wait for the first deploy to finish, then open the service's `onrender.com` URL. Test `/health`, sign up, sign in, and open the translator dashboard.
+5. In the deployed site, allow camera/microphone permissions. Confirm the browser can connect to `/ws/sign`; check **Render → Logs** if startup or recognition fails.
+
+The Blueprint uses SQLite because its mounted disk survives restarts. Keep a single service instance when using SQLite; do not scale it horizontally. For multiple instances, use a managed PostgreSQL database and set `DATABASE_URL` to its connection URL. The app accepts `postgres://` and `postgresql://` URLs and uses the included `psycopg` driver. Keep `SECRET_KEY` stable across deploys so existing sessions remain valid. Set `SESSION_COOKIE_SECURE=true` only when serving over HTTPS (Render's public URL uses HTTPS).
+
+## Deploy to Vercel
+
+Vercel deploys the FastAPI ASGI app using [`pyproject.toml`](./pyproject.toml) and [`vercel.json`](./vercel.json). The deployment includes the templates, frontend assets, bundled signs, and available model files; training datasets and training-only packages are not part of the runtime dependency set.
+
+1. Push the repository to GitHub and import it in Vercel with **Add New → Project**. Set the project root to the repository root and leave the framework preset as **Other**.
+2. In **Project → Settings → Environment Variables**, add:
+   - `SECRET_KEY`: a long, random secret (generate a different value for each environment).
+   - `SESSION_COOKIE_SECURE`: `true`.
+   - `DATABASE_URL`: a managed PostgreSQL connection URL, for example from Neon or another PostgreSQL provider. Do not use the default SQLite database for production on Vercel: function filesystems are ephemeral and are not shared across instances.
+3. Leave the build and output directory overrides empty so Vercel detects the Python project and reads `requirements.txt` / `pyproject.toml`. Deploy, then use **Deployments → Redeploy** after changing environment variables.
+4. Open the deployment URL and verify `/health`, signup/login, the dashboard, camera permissions, and the `/ws/sign` WebSocket connection. Use **Runtime Logs** to diagnose function startup or request errors.
+
+Vercel's Python WebSocket support is currently a platform feature with runtime/connection limits, not a guarantee of an indefinitely open connection. The client reconnects after disconnects; test this on the deployed project and check Vercel's current WebSocket and function-duration limits before using it for long-running sessions. Camera and microphone access requires the HTTPS deployment URL. The app does not generate or modify GIF assets on Vercel because function filesystems are read-only; bundled assets remain available. Translation is provided by the app's local phrase data, so it does not require an external translation API.
+
+## Deployment configuration and secrets
+
+- Never commit `.env`, production secrets, database URLs, or user data. Configure secrets in the hosting provider's environment settings.
+- `SECRET_KEY` must be a high-entropy secret and must remain unchanged across restarts. Generate a value with `python -c "import secrets; print(secrets.token_urlsafe(48))"`.
+- `DATABASE_URL` defaults to local SQLite (`sqlite:///data/silentlink.db`). Render's Blueprint overrides this with a persistent-disk path. Vercel requires managed PostgreSQL for durable, shared account storage.
+- `SESSION_COOKIE_SECURE` defaults to `false` for local HTTP development; set it to `true` for the public HTTPS deployment.
+- The runtime `requirements.txt` is intentionally lean. Install `requirements-training.txt` only in a local training environment; it includes the computer-vision and model-training dependencies.
+
 ## Feature Matrix
 
 | Area            | What ships                                                                                               |
@@ -98,7 +132,7 @@ SilentLink/
 ├─ tests/                  # test_static_sign_rules.py · __init__.py
 ├─ utils/tts_engine.py     # optional pyttsx3 wrapper
 ├─ requirements.txt
-├─ requirements-training.txt   # + tensorflow / scikit-learn for training machines
+├─ requirements-training.txt   # computer-vision and model-training dependencies
 ├─ .env.example
 ├─ .gitignore
 ├─ run.py
@@ -124,7 +158,7 @@ veenv\Scripts\python.exe training\evaluate_alphabet.py --model models\alphabet_m
 
 Or one-click on Windows: `scripts\train_alphabet.ps1`.
 
-## Train the Dynamic BiLSTM (future)
+## Train the Dynamic BiLSTM
 
 ```powershell
 veenv\Scripts\python.exe training\train_dynamic_signs.py --seq-dataset dataset\sequences --out models\dynamic_sign_lstm.json --hidden 64 --layers 2 --epochs 30

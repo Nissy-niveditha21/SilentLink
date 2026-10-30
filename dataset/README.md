@@ -29,7 +29,8 @@ Hands is robust to a wide range of backgrounds and lighting.
 ## Dynamic Sign Sequences Dataset
 
 The BiLSTM dynamic-sign model reads NumPy arrays from
-`<seq-dataset>/sequences/<sign>/sample_XXXX.npy`. Each `.npy` file holds a
+`<seq-dataset>/sequences/<sign>/sample_XXXX.npy` or, for official datasets,
+`<seq-dataset>/sequences/<sign>/<train|val|test>/<sample>.npy`. Each `.npy` file holds a
 single sample of shape `(seq_len, 21, 3)` — 21 MediaPipe xyz hand landmarks
 per frame, across `seq_len` consecutive frames of a sign being performed.
 (The training script also accepts the flattened shape `(seq_len, 63)` since
@@ -46,10 +47,11 @@ the first detected hand's landmark array, and save the stacked result with
 ## End-to-End Alphabet Pipeline (Extract → Train → Evaluate)
 
 The static fingerspelling pipeline is three commands. Step one:
-`python training/extract_landmarks.py --data data/asl_alphabet_train --out data/asl_landmarks.npz --samples 400`
+`python training/extract_landmarks.py --data data/asl_alphabet_train --test-data data/asl_alphabet_test --out data/asl_landmarks.npz --samples 400`
 walks each class folder, runs MediaPipe on every image, normalizes the 63
 landmark features wrist-relative, and writes a compressed `.npz` with keys
-`X`, `y`, and `class_names`. Step two:
+`X`, `y`, and `class_names`. When `--test-data` is supplied, the file also
+contains `X_test` and `y_test` from labeled test images or class folders. Step two:
 `python training/train_alphabet.py --data data/asl_landmarks.npz --out models/alphabet_mlp.json`
 performs a stratified train/validation split with seed 42, fits a
 scikit-learn MLP with early stopping, and serializes weights + scaler to the
@@ -58,9 +60,35 @@ JSON model card. Step three:
 re-applies the *exact same* split, runs the pure-NumPy forward pass used at
 runtime, and writes accuracy, per-class precision/recall, top confusions,
 and the full confusion matrix back into the JSON model card so metrics live
-next to weights. On Windows you can replace the three manual commands with
-the single launcher `scripts/train_alphabet.ps1`, which uses the virtual
+next to weights. The evaluator uses `X_test`/`y_test` when present; otherwise it
+reports the held-out validation split. On Windows you can replace the three
+manual commands with the single launcher `scripts/train_alphabet.ps1`, which uses the virtual
 environment if present and prints colored progress banners.
+
+## WLASL Video-to-Word Pipeline
+
+The WLASL archive contains word-level clips and official `train`, `val`, and
+`test` splits. Convert it directly from the ZIP without unpacking the full
+archive. The default extracts the `i`, `love`, and `you` glosses so a trained
+model can recognize those words in sequence:
+
+```powershell
+python training\prepare_wlasl.py --archive "C:\path\to\archive.zip" --out data\wlasl --classes i love you
+python training\train_dynamic_signs.py --seq-dataset data\wlasl --seq-len 30 --out models\dynamic_sign_lstm.json
+python training\evaluate_dynamic_signs.py --seq-dataset data\wlasl --seq-len 30 --model models\dynamic_sign_lstm.json
+```
+
+The extractor samples 30 frames per clip and stores normalized hand landmarks
+under `sequences/<gloss>/<train|val|test>/`. The trainer selects official
+training and validation clips, and the evaluator reports metrics only on the
+separate official test split. Increase the selected glosses as compute and
+storage allow with `--classes ...`; `--all-classes` processes the full
+vocabulary and can take substantial time and disk space. WLASL is a word-level
+dataset, not a sentence dataset: live recognition builds sentences by appending
+the recognized glosses. Select **Phrases** mode in the app to prefer these
+dynamic word predictions over static alphabet predictions. The `i`, `love`,
+and `you` classes have few clips, so their test results may be unstable and
+should not be treated as production accuracy.
 
 ## Honest Disclosure: No Data Ships, and Where to Download Yours
 

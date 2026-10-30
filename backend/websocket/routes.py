@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 import logging
 import sys
 import time
@@ -63,8 +64,10 @@ async def ws_sign(
     state = _get_app_state(websocket)
 
     static_rec = getattr(state, "static_recognizer", None)
-    temporal = getattr(state, "temporal_processor", None)
-    dyn_rec = getattr(state, "dynamic_recognizer", None)
+    temporal_template = getattr(state, "temporal_processor", None)
+    temporal = deepcopy(temporal_template) if temporal_template is not None else None
+    dynamic_template = getattr(state, "dynamic_recognizer", None)
+    dyn_rec = dynamic_template.new_session() if dynamic_template is not None else None
     translation_svc = getattr(state, "translation_service", None)
     asset_resolver = getattr(state, "asset_resolver", None)
     cc_svc = getattr(state, "computer_control", None)
@@ -106,6 +109,39 @@ async def ws_sign(
             resp_echo = msg.echo_id
 
             if msg.type == "ping":
+                if dyn_rec is not None:
+                    dyn_rec.clear()
+                if temporal is not None:
+                    step_out = temporal.step(None, now_ts=time.time())
+                    if step_out.get("changed"):
+                        sentence = step_out.get("sentence", "")
+                        translations = (
+                            translation_svc.translate_sentence(sentence)
+                            if translation_svc is not None and sentence
+                            else {}
+                        )
+                        await manager.send(
+                            session_id,
+                            ServerMessage(
+                                type="recognition",
+                                recognition=RecognitionResult(
+                                    status=step_out.get("status", "idle"),
+                                    current_word=step_out.get("current_word", ""),
+                                    sentence=sentence,
+                                    changed=True,
+                                    mode=current_mode,  # type: ignore[arg-type]
+                                ),
+                                phrase_status={
+                                    "key": "SENTENCE",
+                                    "english": translations.get("en"),
+                                    "hindi": translations.get("hi"),
+                                    "telugu": translations.get("te"),
+                                    "spanish": translations.get("es"),
+                                    "french": translations.get("fr"),
+                                } if translations else None,
+                                ts=time.time(),
+                            ).model_dump(exclude_none=True),
+                        )
                 await manager.send(
                     session_id,
                     ServerMessage(type="pong", echo_id=resp_echo, ts=time.time()).model_dump(exclude_none=True),
@@ -117,12 +153,23 @@ async def ws_sign(
                 if ctl.mode is not None:
                     current_mode = ctl.mode
                     state.current_mode = current_mode
+                    if dyn_rec is not None:
+                        dyn_rec.clear()
                     if cc_svc is not None:
                         cc_svc.set_active(current_mode == "CONTROL")
                 if ctl.threshold is not None:
                     conf_threshold = float(ctl.threshold)
                 if temporal is not None:
                     temporal.control(ctl.action)
+                sentence_translations = {}
+                if (
+                    temporal is not None
+                    and translation_svc is not None
+                    and temporal.builder.sentence.strip()
+                ):
+                    sentence_translations = translation_svc.translate_sentence(
+                        temporal.builder.sentence.rstrip()
+                    )
 
                 await manager.send(
                     session_id,
@@ -137,6 +184,14 @@ async def ws_sign(
                             changed=False,
                             mode=current_mode,  # type: ignore[arg-type]
                         ),
+                        phrase_status={
+                            "key": "SENTENCE",
+                            "english": sentence_translations.get("en"),
+                            "hindi": sentence_translations.get("hi"),
+                            "telugu": sentence_translations.get("te"),
+                            "spanish": sentence_translations.get("es"),
+                            "french": sentence_translations.get("fr"),
+                        } if sentence_translations else None,
                         echo_id=resp_echo,
                         ts=time.time(),
                     ).model_dump(exclude_none=True),
@@ -190,12 +245,16 @@ async def ws_sign(
                     log.warning("static_rec.predict error %s", rec_err)
                     raw_pred = None
 
-            if feature_fn is not None and dyn_rec is not None:
+            if feature_fn is not None and dyn_rec is not None and current_mode != "CONTROL":
                 feat63 = feature_fn(pts)
                 dyn_rec.add_frame(feat63)
-                if raw_pred is None and dyn_rec.ready():
+                if dyn_rec.ready():
                     dyn_out = dyn_rec.predict()
-                    if dyn_out is not None:
+                    if dyn_out is not None and dyn_out["confidence"] >= 0.75 and (
+                        raw_pred is None
+                        or current_mode == "PHRASE"
+                        or dyn_out["confidence"] > raw_pred.get("confidence", 0.0)
+                    ):
                         raw_pred = dyn_out
 
             if temporal is not None:
@@ -237,6 +296,17 @@ async def ws_sign(
                             image=resolved.get("image", ""),
                             auto_translated=tr.get("auto_translated", False),
                         )
+
+            if rec_result.get("changed") and rec_result.get("sentence") and translation_svc is not None:
+                sentence_translations = translation_svc.translate_sentence(rec_result["sentence"])
+                phrase_status_out = {
+                    "key": "SENTENCE",
+                    "english": sentence_translations.get("en"),
+                    "hindi": sentence_translations.get("hi"),
+                    "telugu": sentence_translations.get("te"),
+                    "spanish": sentence_translations.get("es"),
+                    "french": sentence_translations.get("fr"),
+                }
 
             if rec_result["sentence"] and rec_result["sentence"] != last_sentence_fired and rec_result.get("changed"):
                 last_sentence_fired = rec_result["sentence"]

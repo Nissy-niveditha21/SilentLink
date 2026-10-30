@@ -689,6 +689,8 @@ body::before {
     border: 1px solid var(--glass-border);
     background: #020810;
     box-shadow: var(--shadow-lg), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    aspect-ratio: 4 / 3;
+    min-height: 300px;
 }
 
 .video-wrapper::before {

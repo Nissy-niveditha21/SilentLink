@@ -34,7 +34,7 @@ class AssetResolver:
             key = sign_key
 
         video_url = meta.get("video")
-        if not video_url:
+        if not video_url and key != "UNKNOWN":
             # Dynamically generate GIF via AutoGifAgent if missing
             video_url = self.gif_agent.generate_gif_for_sign(key, meta.get("display"))
 
@@ -52,3 +52,13 @@ class AssetResolver:
         }
         return result
 
+    def lookup_translation(self, sign_key):
+        if not isinstance(sign_key, str) or not sign_key.strip():
+            return None
+        meta = self._signs.get(sign_key.strip().upper())
+        if meta is None:
+            return None
+        return {
+            "type": meta.get("type", "fallback"),
+            "translations": dict(meta.get("translations", {}) or {}),
+        }

@@ -131,11 +131,13 @@
         const phraseBox = document.getElementById('phrase-box');
 
         let currentMode = 'COMMUNICATION';
+        let hasTranslation = false;
         let ws = null;
         let wsReconnectAttempts = 0;
         let wsReconnectTimer = null;
         let frameSeq = 0;
         let lastSentenceSent = '';
+        let lastClipKey = '';
 
         function setMode(mode) {
             currentMode = mode;
@@ -153,7 +155,7 @@
                     defaultInfo.classList.add('hidden');
                     updateSignClip('HELLO');
                 } else {
-                    phraseBox.classList.add('hidden');
+                    phraseBox.classList.toggle('hidden', !hasTranslation);
                     defaultInfo.classList.remove('hidden');
                 }
             }
@@ -261,7 +263,10 @@
                             ? msg.translation.translations
                             : (msg.phrase_status ? { en: msg.phrase_status.english, hi: msg.phrase_status.hindi, te: msg.phrase_status.telugu, es: msg.phrase_status.spanish, fr: msg.phrase_status.french } : {});
                         saveHistoryEntry({ ts: Date.now(), text: s, mode: currentMode, languages: langs });
-                        if (settings.speakauto) speakText(s, settings.language);
+                        if (settings.speakauto) {
+                            const spokenText = langs[settings.language] || s;
+                            speakText(spokenText, settings.language);
+                        }
                     }
                 }
                 if (wordEl) wordEl.textContent = r.current_word ? `[ ${r.current_word} ]` : '\u00a0';
@@ -279,7 +284,7 @@
             }
             if (msg.phrase_status) {
                 renderPhraseTranslations(msg.phrase_status);
-                if (msg.phrase_status.english) {
+                if (msg.phrase_status.english && msg.phrase_status.key !== 'SENTENCE') {
                     updateSignClip(msg.phrase_status.english);
                 }
             } else if (msg.translation && msg.translation.translations) {
@@ -292,6 +297,9 @@
             const avatarImg = document.getElementById('avatar-clip-img');
             const avatarTitle = document.getElementById('avatar-sign-title');
             if (!signKey) return;
+            const normalizedKey = signKey.trim().toUpperCase();
+            if (normalizedKey === lastClipKey) return;
+            lastClipKey = normalizedKey;
             fetch('/api/sign/' + encodeURIComponent(signKey))
                 .then(res => res.json())
                 .then(data => {
@@ -320,9 +328,24 @@
             const convertBtn = document.getElementById('btn-voice-convert');
 
             function triggerGifPlayback(phrase) {
-                if (!phrase) return;
-                const cleanKey = phrase.trim().toUpperCase();
+                const cleanPhrase = phrase.trim();
+                if (!cleanPhrase) return;
+                const cleanKey = cleanPhrase.toUpperCase()
+                    .replace(/\bU\b/g, 'YOU')
+                    .replace(/[\s-]+/g, '_');
                 updateSignClip(cleanKey);
+                fetch('/api/translate?' + new URLSearchParams({ phrase: cleanPhrase }))
+                    .then(response => {
+                        if (!response.ok) throw new Error(`Translation failed (${response.status})`);
+                        return response.json();
+                    })
+                    .then(translations => {
+                        renderTranslations(translations);
+                        if (settings.speakauto) {
+                            speakText(translations[settings.language] || cleanPhrase, settings.language);
+                        }
+                    })
+                    .catch(error => console.error('Voice phrase translation failed:', error));
             }
 
             if (convertBtn && voiceInput) {
@@ -336,33 +359,74 @@
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                if (micText) micText.textContent = 'Use Chrome/Edge for Mic';
+                if (micText) micText.textContent = 'Use Chrome or Edge';
                 return;
             }
 
             const recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
+            recognition.continuous = true;
+            recognition.interimResults = true;
             recognition.lang = 'en-US';
 
             let isListening = false;
+            let wantsListening = false;
+            let hasRecognitionError = false;
+            let completedTranscript = '';
+            let sessionTranscript = '';
+
+            function finishTranscript() {
+                const transcript = completedTranscript.trim();
+                if (transcript) {
+                    if (voiceInput) voiceInput.value = transcript;
+                    triggerGifPlayback(transcript);
+                }
+                completedTranscript = '';
+                sessionTranscript = '';
+            }
+
+            function getRecognitionErrorMessage(error) {
+                const messages = {
+                    'audio-capture': 'No microphone found',
+                    'no-speech': 'No speech detected; try again',
+                    'not-allowed': 'Allow microphone access',
+                    'service-not-allowed': 'Speech service is blocked',
+                    network: 'Speech service unavailable; check your connection',
+                    aborted: 'Listening canceled',
+                };
+                return messages[error] || 'Mic error; check browser permissions';
+            }
 
             if (micBtn) {
                 micBtn.addEventListener('click', () => {
-                    if (isListening) {
-                        try { recognition.stop(); } catch(e){}
-                    } else {
-                        try {
-                            recognition.start();
-                        } catch (err) {
-                            console.error('SR start error:', err);
-                            // Fallback to getUserMedia prompt if recognition.start fails
-                            navigator.mediaDevices?.getUserMedia({ audio: true }).then(() => {
-                                try { recognition.start(); } catch(e){}
-                            }).catch(gerr => {
-                                console.warn('Mic permission error:', gerr);
-                                if (micText) micText.textContent = 'Mic Denied in Chrome';
-                            });
+                    if (wantsListening) {
+                        wantsListening = false;
+                        if (isListening) recognition.stop();
+                        else finishTranscript();
+                        return;
+                    }
+
+                    if (window.isSecureContext === false) {
+                        if (micText) micText.textContent = 'Use HTTPS or localhost';
+                        return;
+                    }
+
+                    hasRecognitionError = false;
+                    completedTranscript = '';
+                    sessionTranscript = '';
+                    wantsListening = true;
+                    isListening = true;
+                    if (micText) micText.textContent = 'Starting microphone…';
+                    try {
+                        recognition.start();
+                    } catch (err) {
+                        isListening = false;
+                        wantsListening = false;
+                        hasRecognitionError = true;
+                        console.error('Speech recognition could not start:', err);
+                        if (micText) {
+                            micText.textContent = err.name === 'NotAllowedError'
+                                ? 'Allow microphone access'
+                                : 'Could not start microphone; try again';
                         }
                     }
                 });
@@ -375,24 +439,62 @@
             };
 
             recognition.onresult = (evt) => {
-                const transcript = evt.results[0][0].transcript;
-                console.log('Voice transcript recognized:', transcript);
-                if (voiceInput) voiceInput.value = transcript;
-                triggerGifPlayback(transcript);
+                const results = Array.from(evt.results || []);
+                sessionTranscript = results
+                    .filter(result => result.isFinal)
+                    .map(result => result[0] && result[0].transcript || '')
+                    .join(' ')
+                    .trim();
+                const interimTranscript = results
+                    .filter(result => !result.isFinal)
+                    .map(result => result[0] && result[0].transcript || '')
+                    .join(' ')
+                    .trim();
+                const transcript = [completedTranscript, sessionTranscript, interimTranscript]
+                    .filter(Boolean)
+                    .join(' ')
+                    .trim();
+                if (voiceInput && transcript) voiceInput.value = transcript;
             };
 
             recognition.onerror = (err) => {
                 console.error('Speech recognition error event:', err);
                 isListening = false;
+                wantsListening = false;
+                hasRecognitionError = true;
                 if (micBtn) micBtn.classList.remove('recording');
-                if (micText) micText.textContent = 'Error: ' + (err.error || 'Mic Fail');
-                setTimeout(() => { if (micText) micText.textContent = 'Speak to Sign'; }, 3000);
+                if (micText) micText.textContent = getRecognitionErrorMessage(err.error);
             };
 
             recognition.onend = () => {
                 isListening = false;
                 if (micBtn) micBtn.classList.remove('recording');
-                if (micText) micText.textContent = 'Speak to Sign';
+                if (sessionTranscript) {
+                    completedTranscript = [completedTranscript, sessionTranscript]
+                        .filter(Boolean)
+                        .join(' ');
+                    sessionTranscript = '';
+                }
+                if (wantsListening && !hasRecognitionError) {
+                    setTimeout(() => {
+                        if (!wantsListening) {
+                            finishTranscript();
+                            return;
+                        }
+                        try {
+                            recognition.start();
+                        } catch (err) {
+                            wantsListening = false;
+                            hasRecognitionError = true;
+                            console.error('Speech recognition could not restart:', err);
+                            if (micText) micText.textContent = 'Could not continue listening; try again';
+                            finishTranscript();
+                        }
+                    }, 150);
+                    return;
+                }
+                if (micText && !hasRecognitionError) micText.textContent = 'Speak to Sign';
+                finishTranscript();
             };
         }
 
@@ -400,6 +502,8 @@
 
 
         function renderPhraseTranslations(ps) {
+            hasTranslation = true;
+            if (phraseBox) phraseBox.classList.remove('hidden');
             ['en', 'hi', 'te', 'es', 'fr'].forEach((lang, idx) => {
                 const valMap = { en: ps.english, hi: ps.hindi, te: ps.telugu, es: ps.spanish, fr: ps.french };
                 setPhraseRow(lang, valMap[lang]);
@@ -407,6 +511,8 @@
         }
 
         function renderTranslations(tr) {
+            hasTranslation = true;
+            if (phraseBox) phraseBox.classList.remove('hidden');
             ['en', 'hi', 'te', 'es', 'fr'].forEach(lang => setPhraseRow(lang, tr[lang]));
         }
 

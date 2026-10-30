@@ -225,10 +225,14 @@ class AutoGifAgent:
     def generate_gif_for_sign(self, sign_key: str, display_text: str = None) -> str:
         key = sign_key.upper().strip()
         sign_folder = os.path.join(self.signs_dir, key)
-        os.makedirs(sign_folder, exist_ok=True)
-
         gif_path = os.path.join(sign_folder, "clip.gif")
         rel_url = f"/assets/signs/{key}/clip.gif"
+        if os.path.isfile(gif_path):
+            return rel_url
+        if os.environ.get("VERCEL"):
+            log.warning("Skipping GIF generation for %s on the read-only Vercel filesystem.", key)
+            return ""
+        os.makedirs(sign_folder, exist_ok=True)
 
         log.info("AutoGifAgent rendering ENLARGED EXPRESSIVE CARTOON GIF for: %s", key)
 
@@ -273,6 +277,9 @@ class AutoGifAgent:
     def ensure_all_gifs(self):
         """Pre-generates expressive cartoon action GIFs for all configured signs in signs.json."""
         if not os.path.exists(self.signs_json):
+            return
+        if os.environ.get("VERCEL"):
+            log.info("Using bundled sign GIFs on Vercel; skipping asset generation.")
             return
 
         try:
