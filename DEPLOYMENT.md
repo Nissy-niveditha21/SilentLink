@@ -259,3 +259,71 @@ For deployment issues:
 
 ## License
 SilentLink is released under the MIT License. See LICENSE file for details.
+
+
+## Vercel Deployment (Fixed Configuration)
+
+### Important Fix for Vercel
+The original deployment had a `FUNCTION_INVOCATION_FAILED` error due to:
+1. **TensorFlow being too large** for Vercel serverless functions (15MB limit)
+2. **Configuration syntax errors** in `vercel.json`
+
+### Updated Configuration
+We've created a Vercel-optimized version:
+
+#### 1. Vercel-Optimized Main App (`backend/main_vercel.py`)
+- Removes TensorFlow dependencies
+- Uses rule-based recognition only (no ML model loading)
+- Disables computer control (pyautogui not available in serverless)
+- Maintains all other functionality
+
+#### 2. Optimized Requirements (`requirements-vercel.txt`)
+- Excludes TensorFlow, torch, scikit-learn (too large)
+- Includes MediaPipe for landmark detection
+- Uses PostgreSQL driver for database
+
+#### 3. Updated Vercel Config (`vercel.json`)
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "backend/main_vercel.py": {
+      "memory": 3008,
+      "maxDuration": 10
+    }
+  },
+  "buildCommand": "pip install -r requirements-vercel.txt",
+  "installCommand": "pip install -r requirements-vercel.txt",
+  "outputDirectory": ".",
+  "regions": ["iad1"]
+}
+```
+
+### Deployment Steps (Fixed)
+
+1. **Push to GitHub** with the new configuration files
+2. **Import in Vercel** with **Add New → Project**
+3. **Configure Environment Variables**:
+   - `SECRET_KEY`: Generate strong random string
+   - `DATABASE_URL`: PostgreSQL connection string (required for Vercel)
+   - `SESSION_COOKIE_SECURE`: `true`
+4. **Vercel will automatically**:
+   - Use `requirements-vercel.txt` instead of `requirements.txt`
+   - Deploy the optimized `backend/main_vercel.py`
+   - Allocate sufficient memory (3008MB)
+5. **Verify deployment**:
+   - Home page: `https://your-app.vercel.app`
+   - Health check: `https://your-app.vercel.app/health`
+   - API docs: `https://your-app.vercel.app/api/docs`
+
+### Feature Limitations on Vercel
+- **ML Model Recognition**: Disabled (TensorFlow too large)
+- **Computer Control**: Disabled (pyautogui not available)
+- **GIF Generation**: Disabled (read-only filesystem)
+- **Database**: Must use PostgreSQL (SQLite not supported)
+
+### Full Feature Availability
+For full functionality with ML model recognition, use:
+- **Docker Deployment** (recommended for full features)
+- **Render Deployment** (with persistent storage)
+- **Local Development** (all features available)
